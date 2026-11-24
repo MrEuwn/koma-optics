@@ -1,0 +1,50 @@
+:root {
+  --font-display: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --dark-bg: #0D1014;
+  --dark-surface: #161B21;
+  --dark-surface-elevated: #1E252D;
+  --paper-bg: #EEF0EC;
+  --paper-surface: #E4E7E2;
+
+  --accent-amber: #D96B27;
+  --accent-amber-bright: #EC8440;
+  --accent-amber-paper: #9E430E; /* 5.9:1 on #EEF0EC */
+
+  --ease-editorial: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-optical: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --gutter-x: clamp(16px, 1.65vw, 24px);
+}
+
+[data-band='dark'] {
+  --bg: #0D1014;
+  --surface: #161B21;
+  --surface-elevated: #1E252D;
+  --ink: #EFF2F5;          /* 17.0:1 on #0D1014 */
+  --ink-muted: #9BA3AC;    /* 7.3:1 on #0D1014 */
+  --ink-dim: #8C95A0;      /* 5.9:1 on #0D1014 */
+  --accent-ink: #EC8440;   /* 7.1:1 on #0D1014 */
+  --line: #343C46;
+  --line-strong: #6A7482;
+  --focus-ring: #EC8440;
+  background-color: var(--bg);
+  color: var(--ink);
+}
+
+[data-band='paper'] {
+  --bg: #EEF0EC;
+  --surface: #E4E7E2;
+  --surface-elevated: #DADED8;
+  --ink: #181C20;          /* 14.8:1 on #EEF0EC */
+  --ink-muted: #4E565F;    /* 6.6:1 on #EEF0EC */
+  --ink-dim: #57606A;      /* 5.6:1 on #EEF0EC */
+  --accent-ink: #9E430E;   /* 5.9:1 on #EEF0EC */
+  --line: #C7CCC4;
+  --line-strong: #6F7780;
+  --focus-ring: #9E430E;
+  background-color: var(--bg);
+  color: var(--ink);
+}

@@ -1,0 +1,1236 @@
+/* ==========================================================================
+   KOMA O-III (PRISM O) : Museum Editorial & Chiaroscuro Layout Styles
+   ========================================================================== */
+
+/* 1. OBYS ARCHITECTURAL FIXED 4-ZONE HEADER
+   -------------------------------------------------------------------------- */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 1;
+  transition: color 0.35s var(--ease-optical), opacity 0.35s var(--ease-optical);
+}
+
+.site-header--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.site-header--hidden * {
+  pointer-events: none !important;
+}
+
+.site-header--dark {
+  color: #EFF2F5;
+  --header-mark-cutout: #0D1014;
+  --header-muted: #9BA3AC;
+}
+
+.site-header--paper {
+  color: #181C20;
+  --header-mark-cutout: #EEF0EC;
+  --header-muted: #4E565F;
+}
+
+/* Smooth subtle top scrim prevents header text collision over giant display H2s */
+.site-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 82px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease-optical);
+}
+
+.site-header--scrolled.site-header--dark::before {
+  opacity: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(13, 16, 20, 0.92) 0%,
+    rgba(13, 16, 20, 0.62) 55%,
+    rgba(13, 16, 20, 0) 100%
+  );
+}
+
+.site-header--scrolled.site-header--paper::before {
+  opacity: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(238, 240, 236, 0.95) 0%,
+    rgba(238, 240, 236, 0.68) 58%,
+    rgba(238, 240, 236, 0) 100%
+  );
+}
+
+.site-header__bar {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 15.5% 19% 1fr 25.5%;
+  align-items: start;
+  padding: 18px var(--gutter-x) 0;
+}
+
+.site-header__brand,
+.site-header__tree,
+.site-header__right {
+  pointer-events: auto;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.koma-emblem-svg {
+  flex-shrink: 0;
+}
+
+.brand-lockup__word {
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+/* Numbered 3-series catalog tree (collapses gracefully to active 01 PRISM O on scroll) */
+.site-header__tree {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tree-series {
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.4s var(--ease-optical), transform 0.4s var(--ease-optical);
+}
+
+.site-header--scrolled .tree-series--secondary {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+}
+
+.site-header--scrolled .site-header__tree {
+  gap: 0;
+}
+
+.site-header--scrolled .tree-series--active {
+  color: var(--header-muted);
+}
+
+.tree-series__head {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 14px;
+  line-height: 1.4;
+  transition: opacity 0.2s var(--ease-optical);
+}
+
+.tree-series__head:hover,
+.tree-series__model:hover {
+  opacity: 0.68;
+}
+
+.tree-series__num {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.tree-series__models {
+  padding-left: 46px;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tree-series__model {
+  display: inline-block;
+  line-height: 1.38;
+  transition: opacity 0.2s var(--ease-optical);
+}
+
+/* Monumental centered Hero H1 scaling cleanly to pinned 12px title on scroll */
+.site-header__center {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.site-header__h1 {
+  transform-origin: center top;
+  white-space: nowrap;
+  will-change: transform;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* Right editorial links + far-right CART ( N ) */
+.site-header__right {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.site-header__links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.header-text-link,
+.header-cart-btn,
+.header-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  transition: opacity 0.2s var(--ease-optical);
+}
+
+.header-text-link:hover,
+.header-cart-btn:hover,
+.header-menu-btn:hover {
+  opacity: 0.65;
+}
+
+.header-menu-btn {
+  display: none;
+}
+
+.mobile-nav-sheet {
+  pointer-events: auto;
+  margin-top: 12px;
+  padding: 20px var(--gutter-x) 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mobile-nav-sheet--dark {
+  background-color: #0D1014;
+  color: #EFF2F5;
+}
+
+.mobile-nav-sheet--paper {
+  background-color: #EEF0EC;
+  color: #181C20;
+}
+
+.mobile-nav-sheet__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.mobile-nav-group__title {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.mobile-nav-group__item {
+  display: block;
+  padding: 4px 0;
+  opacity: 0.8;
+}
+
+.mobile-nav-sheet__foot {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(155, 163, 172, 0.28);
+  display: flex;
+  gap: 24px;
+}
+
+/* 2. HERO DARKROOM CHIAROSCURO STAGE (100svh, ZERO UI CLUTTER)
+   -------------------------------------------------------------------------- */
+.hero-band {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 680px;
+  max-height: 1120px;
+  background-color: #0D1014;
+  overflow: hidden;
+}
+
+.hero-stage-canvas-slot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-floor-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 85% 42% at 38% 96%,
+    rgba(218, 224, 232, 0.12) 0%,
+    rgba(13, 16, 20, 0) 70%
+  );
+}
+
+.hero-fallback-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+}
+
+/* 3. STORY BAND (#EEF0EC LAB PAPER : 4 MUSEUM ACTS)
+   -------------------------------------------------------------------------- */
+.story-band {
+  z-index: 4;
+  background-color: #EEF0EC;
+  color: #181C20;
+  padding-top: clamp(132px, 11vw, 172px);
+  padding-bottom: clamp(88px, 7.5vw, 136px);
+}
+
+/* Act 1: Split Monumental Headline + Piercing Vertical Column of 4 Orthographic Plates */
+.story-act-hero {
+  position: relative;
+  padding: 0 var(--gutter-x);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.story-split-headline {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  width: 100%;
+  max-width: 1280px;
+}
+
+.story-headline-line {
+  display: block;
+  color: #181C20;
+}
+
+/* Piercing vertical column of 4 square studio plates centered right across lines 2 & 3 */
+.story-ortho-column {
+  position: relative;
+  z-index: 2;
+  margin-top: clamp(-162px, -11.8vw, -92px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: clamp(144px, 12.6vw, 182px);
+}
+
+.story-ortho-plate {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background-color: #E4E6E2;
+  overflow: hidden;
+}
+
+.story-ortho-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 4-column razor-sharp architectural dimension rail flanking the plate stack */
+.story-dim-rail {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 18% 24% 1fr 22% 16%;
+  align-items: center;
+  color: #4E565F; /* 6.6:1 contrast on #EEF0EC */
+  margin-top: clamp(-360px, -27vw, -240px);
+  margin-bottom: clamp(320px, 24vw, 390px);
+  pointer-events: none;
+}
+
+.story-dim-rail > :nth-child(1) {
+  grid-column: 1;
+  text-align: left;
+}
+
+.story-dim-rail > :nth-child(2) {
+  grid-column: 2;
+  text-align: left;
+}
+
+.story-dim-rail > :nth-child(3) {
+  grid-column: 4;
+  text-align: right;
+}
+
+.story-dim-rail > :nth-child(4) {
+  grid-column: 5;
+  text-align: right;
+}
+
+/* Centered editorial thesis + understated RESERVE NOW */
+.story-thesis-block {
+  margin-top: clamp(48px, 5vw, 84px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+  max-width: 520px;
+}
+
+.story-thesis-copy {
+  color: #181C20;
+}
+
+.story-reserve-link {
+  color: #181C20;
+}
+
+/* Act 2: Scroll-Scrubbed 1px Optical CAD Cross-Section in 90% airy whitespace */
+.story-act-cad {
+  min-height: 78vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(72px, 8vw, 130px) var(--gutter-x);
+}
+
+.story-cad-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.story-cad-svg {
+  width: clamp(220px, 24vw, 330px);
+  height: auto;
+}
+
+.story-cad-meta {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  color: #4E565F;
+}
+
+/* Act 3: 3D Orbital Spiral Editorial Gallery (curated photographs floating in #EEF0EC air) */
+.story-act-spiral {
+  position: relative;
+  height: 185vh;
+  min-height: 1100px;
+}
+
+.spiral-sticky-viewport {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1400px;
+}
+
+.spiral-orbit-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spiral-frame {
+  position: absolute;
+  width: clamp(168px, 16.5vw, 240px);
+  aspect-ratio: 4 / 3;
+  background-color: #E2E5E0;
+  overflow: hidden;
+  will-change: transform, opacity;
+  box-shadow: 0 22px 48px rgba(24, 28, 32, 0.08);
+}
+
+.spiral-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Act 4: Isometric Architectural Optical Bench Size Comparison */
+.story-act-sizes {
+  padding: clamp(56px, 6vw, 96px) var(--gutter-x) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sizes-canvas-wrap {
+  width: 100%;
+  max-width: 1320px;
+}
+
+.sizes-isometric-svg {
+  width: 100%;
+  height: auto;
+}
+
+.sizes-controls-bar {
+  width: 100%;
+  max-width: 1120px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #C7CCC4;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.sizes-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sizes-tab {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #C7CCC4;
+  color: #4E565F;
+  transition: border-color 0.2s var(--ease-optical), color 0.2s var(--ease-optical), background-color 0.2s var(--ease-optical);
+}
+
+.sizes-tab:hover {
+  border-color: #181C20;
+  color: #181C20;
+}
+
+.sizes-tab--active {
+  border-color: #181C20;
+  background-color: #181C20;
+  color: #EEF0EC;
+}
+
+.sizes-live-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sizes-live-dims {
+  color: #9E430E;
+}
+
+.sizes-live-note {
+  color: #4E565F;
+  font-size: 14px;
+}
+
+.sizes-live-cta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.sizes-live-price {
+  color: #4E565F;
+}
+
+/* 4. COLLECTION BAND (#0D1014 DARKROOM SLATE : STAGGERED ASYMMETRIC GRID)
+   -------------------------------------------------------------------------- */
+.collection-band {
+  z-index: 4;
+  background-color: #0D1014;
+  color: #EFF2F5;
+  padding: clamp(118px, 10vw, 158px) var(--gutter-x) clamp(96px, 8.5vw, 148px);
+}
+
+.collection-split-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: clamp(72px, 8.5vw, 138px);
+}
+
+.collection-broken-grid {
+  display: grid;
+  grid-template-columns: 16.5% 24.5% 23.5% 1fr;
+  column-gap: clamp(14px, 1.4vw, 20px);
+  align-items: start;
+}
+
+.collection-index-col {
+  padding-top: 2px;
+  color: #EFF2F5;
+}
+
+.col-card__trigger {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.col-card__media {
+  width: 100%;
+  background-color: #161B21;
+  overflow: hidden;
+}
+
+.col-card--prism .col-card__media {
+  aspect-ratio: 0.78;
+}
+
+.col-card--loupe .col-card__media {
+  aspect-ratio: 1.02;
+}
+
+.col-card--rail .col-card__media {
+  aspect-ratio: 0.73;
+}
+
+.col-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.65s var(--ease-expo-out);
+}
+
+.col-card__trigger:hover .col-card__media img {
+  transform: scale(1.03);
+}
+
+.col-card__caption {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.col-card__title-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  color: #EFF2F5;
+}
+
+.col-card__dims {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #9BA3AC; /* 7.3:1 WCAG AAA on #0D1014 */
+}
+
+/* 5. SIGNATURE INTERACTIVE TABLETOP STUDIO ("CLICK A FILTER · BEND THE BEAM")
+   -------------------------------------------------------------------------- */
+.bench-band {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 700px;
+  max-height: 1060px;
+  background-color: #0D1014;
+  overflow: hidden;
+}
+
+.bench-stage-slot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bench-fallback-surface {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    #0D1014 0%,
+    #0D1014 52%,
+    #D6DAD6 88%,
+    #E2E5E1 100%
+  );
+}
+
+/* Exact Otto 4-column horizontal horizon strip */
+.bench-horizon-strip {
+  position: absolute;
+  top: 47.5%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 10;
+  padding: 0 var(--gutter-x);
+  display: grid;
+  grid-template-columns: 16% 18% 1fr auto;
+  align-items: center;
+  gap: 16px;
+  color: #EFF2F5;
+  pointer-events: none;
+}
+
+.bench-horizon-col--right {
+  text-align: right;
+  padding-right: clamp(20px, 5vw, 72px);
+}
+
+.bench-horizon-col--end {
+  text-align: right;
+}
+
+.bench-reset-btn,
+.bench-reserve-btn {
+  pointer-events: auto;
+  color: #EFF2F5;
+}
+
+/* Direct-manipulation clickable filter hit-zones aligned neatly over/below foreground 3D filters */
+.bench-hotspots-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.bench-hotspot {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: clamp(160px, 15vw, 224px);
+  height: clamp(128px, 17vh, 162px);
+  padding-bottom: 0;
+  transform: translate(-50%, -50%);
+  color: #181C20;
+  transition: transform 0.3s var(--ease-optical);
+}
+
+.bench-hotspot--left {
+  left: 24.5%;
+  top: 81.5%;
+}
+
+.bench-hotspot--center {
+  left: 50%;
+  top: 86%;
+}
+
+.bench-hotspot--right {
+  left: 75.5%;
+  top: 81.5%;
+}
+
+.bench-hotspot__ring {
+  position: absolute;
+  top: 6px;
+  width: 96px;
+  height: 54px;
+  border-radius: 999px;
+  border: 1px dashed rgba(24, 28, 32, 0);
+  transition: border-color 0.25s var(--ease-optical), transform 0.25s var(--ease-optical);
+}
+
+.bench-hotspot:hover .bench-hotspot__ring,
+.bench-hotspot:focus-visible .bench-hotspot__ring {
+  border-color: rgba(24, 28, 32, 0.55);
+  transform: scale(1.06);
+}
+
+.bench-hotspot__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background-color: rgba(13, 16, 20, 0.88);
+  color: #EFF2F5;
+  border: 1px solid rgba(239, 242, 245, 0.22);
+  white-space: nowrap;
+  transition: background-color 0.25s var(--ease-optical), border-color 0.25s var(--ease-optical);
+}
+
+.bench-hotspot:hover .bench-hotspot__label {
+  border-color: rgba(239, 242, 245, 0.62);
+}
+
+.bench-hotspot--mounted .bench-hotspot__label {
+  border-color: #EC8440;
+  background-color: rgba(13, 16, 20, 0.94);
+}
+
+.bench-hotspot__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Quiet bottom-left / bottom-right museum optical telemetry bar (clear of center filter) */
+.bench-telemetry-bar {
+  position: absolute;
+  left: var(--gutter-x);
+  right: var(--gutter-x);
+  bottom: 14px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.bench-telemetry-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 8px;
+  background-color: rgba(238, 240, 236, 0.86);
+  color: #181C20;
+}
+
+.bench-telemetry-key {
+  color: #4E565F;
+}
+
+.bench-telemetry-val {
+  color: #181C20;
+  font-weight: 500;
+}
+
+/* 6. MONUMENTAL FULL-BLEED FOOTER (#0D1014 : EXACT OTTO PROPORTIONS)
+   -------------------------------------------------------------------------- */
+.site-footer {
+  z-index: 4;
+  background-color: #0D1014;
+  color: #EFF2F5;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(24px, 2vw, 32px) var(--gutter-x) clamp(16px, 1.6vw, 24px);
+}
+
+.site-footer__top {
+  display: grid;
+  grid-template-columns: 15.5% 1fr 12% auto;
+  align-items: start;
+  gap: 20px;
+}
+
+.site-footer__muted {
+  color: #9BA3AC;
+}
+
+.site-footer__tree {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer-series__head {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 14px;
+  line-height: 1.4;
+}
+
+.footer-series__num {
+  width: 18px;
+}
+
+.footer-series__models {
+  padding-left: 46px;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.footer-series__model {
+  color: #EFF2F5;
+  transition: opacity 0.2s var(--ease-optical);
+}
+
+.footer-series__model:hover,
+.footer-series__head:hover,
+.footer-nav-link:hover,
+.footer-credit-link:hover {
+  opacity: 0.68;
+}
+
+.site-footer__nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.site-footer__credit {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.footer-credit-link {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+/* Monumental full-bleed SVG emblem + KOMA wordmark spanning 96% viewport width */
+.site-footer__monument {
+  margin-top: clamp(96px, 18vh, 220px);
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20.5% 1fr;
+  align-items: end;
+  gap: clamp(14px, 2vw, 30px);
+}
+
+.footer-emblem-box {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.footer-emblem-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.footer-wordmark-box {
+  width: 100%;
+}
+
+.footer-wordmark-svg {
+  width: 100%;
+  height: auto;
+}
+
+/* 7. RESERVATION CART DRAWER (WCAG-SAFE DARKROOM OVERLAY)
+   -------------------------------------------------------------------------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgba(7, 9, 12, 0.72);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-panel {
+  width: min(460px, 100vw);
+  height: 100%;
+  background-color: #0D1014;
+  color: #EFF2F5;
+  border-left: 1px solid #343C46;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.drawer-kicker {
+  color: #EC8440;
+  margin-bottom: 4px;
+}
+
+.drawer-notice {
+  padding: 10px 12px;
+  background-color: #161B21;
+  border: 1px solid #343C46;
+  color: #9BA3AC;
+}
+
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drawer-section-label {
+  color: #9BA3AC;
+}
+
+.drawer-quick-grid,
+.drawer-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.drawer-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+}
+
+.drawer-empty {
+  padding: 18px;
+  background-color: #161B21;
+  border: 1px solid #343C46;
+  color: #9BA3AC;
+}
+
+.drawer-line {
+  padding: 14px;
+  background-color: #161B21;
+  border: 1px solid #343C46;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawer-line__top,
+.drawer-line__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawer-line__title {
+  font-weight: 500;
+}
+
+.drawer-line__meta {
+  color: #9BA3AC;
+  margin-top: 2px;
+}
+
+.drawer-remove-btn {
+  min-height: 44px;
+  padding: 0 8px;
+  color: #EC8440;
+}
+
+.drawer-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #6A7482;
+}
+
+.drawer-step-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-step-val {
+  min-width: 28px;
+  text-align: center;
+}
+
+.drawer-footer {
+  border-top: 1px solid #343C46;
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drawer-totals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 8px;
+  align-items: baseline;
+}
+
+.drawer-totals dt {
+  color: #9BA3AC;
+}
+
+.drawer-totals dd {
+  text-align: right;
+}
+
+.drawer-total-price {
+  color: #EC8440;
+}
+
+.drawer-submit {
+  width: 100%;
+}
+
+.drawer-confirmed {
+  padding: 16px;
+  background-color: #161B21;
+  border: 1px solid #EC8440;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 8. RESPONSIVE BREAKPOINTS (TABLET & 390px MOBILE MATCHING OTTO)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .site-header__bar {
+    grid-template-columns: 18% 22% 1fr 24%;
+  }
+
+  .collection-broken-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 44px;
+  }
+
+  .collection-index-col {
+    grid-column: 1 / -1;
+  }
+
+  .sizes-controls-bar {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+
+@media (max-width: 767px) {
+  .site-header__bar {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    row-gap: 10px;
+    padding: 14px 16px 0;
+  }
+
+  .site-header__tree,
+  .site-header__links {
+    display: none;
+  }
+
+  .site-header__brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .site-header__right {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 14px;
+  }
+
+  .header-menu-btn {
+    display: inline-flex;
+  }
+
+  .site-header__center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .site-header--scrolled .site-header__center {
+    display: none;
+  }
+
+  .story-ortho-column {
+    margin-top: 24px;
+    width: 58%;
+    max-width: 240px;
+  }
+
+  .story-dim-rail {
+    margin-top: 28px;
+    margin-bottom: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .story-dim-rail > :nth-child(1),
+  .story-dim-rail > :nth-child(2),
+  .story-dim-rail > :nth-child(3),
+  .story-dim-rail > :nth-child(4) {
+    grid-column: auto;
+    text-align: left;
+  }
+
+  .story-act-spiral {
+    height: 120vh;
+    min-height: 700px;
+  }
+
+  .collection-broken-grid {
+    grid-template-columns: 1fr;
+    row-gap: 42px;
+  }
+
+  .bench-horizon-strip {
+    top: 15%;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 6px;
+  }
+
+  .bench-horizon-col--right {
+    text-align: left;
+    padding-right: 0;
+  }
+
+  .bench-hotspot {
+    width: 112px;
+    height: 92px;
+  }
+
+  .bench-hotspot--left {
+    left: 20%;
+    top: 78%;
+  }
+
+  .bench-hotspot--center {
+    left: 50%;
+    top: 84%;
+  }
+
+  .bench-hotspot--right {
+    left: 80%;
+    top: 78%;
+  }
+
+  .bench-hotspot__label {
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+
+  .bench-telemetry-bar {
+    flex-wrap: wrap;
+    bottom: 10px;
+    gap: 8px;
+  }
+
+  .site-footer__top {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 24px;
+  }
+
+  .site-footer__credit {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .site-footer__monument {
+    margin-top: 72px;
+  }
+}
