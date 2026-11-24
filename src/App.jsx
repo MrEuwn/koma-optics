@@ -88,7 +88,7 @@ export default function App() {
         setHeaderHiddenInFooter(fr.top <= vh * 0.28);
       }
 
-      const bands = [...document.querySelectorAll('[data-band]')];
+      const bands = [...document.querySelectorAll('[data-band]')].reverse();
       const probeY = 34;
       for (const el of bands) {
         const r = el.getBoundingClientRect();
