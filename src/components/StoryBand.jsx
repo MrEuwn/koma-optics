@@ -4,285 +4,613 @@ import {
   SPIRAL_FRAMES,
   STORY_ORTHO_PLATES,
 } from '../data/catalog.js';
+import { drawPrismWireframeAssembly } from '../webgl/wireframe3dProjector.js';
 
 function clamp01(v) {
   return Math.min(1, Math.max(0, v));
 }
 
+function smoothStep(e0, e1, x) {
+  const t = clamp01((x - e0) / Math.max(0.0001, e1 - e0));
+  return t * t * (3 - 2 * t);
+}
+
 function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
+  const c = clamp01(t);
+  return 1 - Math.pow(1 - c, 3);
 }
 
 function easeInOutCubic(t) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const c = clamp01(t);
+  return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
+}
+
+/**
+ * Photorealistic Top-Down Overhead 4-Barrel + 3-Crystal-Coupler Cutout SVG
+ * Matches the exact geometry of drawPrismWireframeAssembly at pitch=PI/2, roll=PI/2
+ * so the liquid wave wipe from photo -> 1px wireframe in s04 -> s05 is 100% seamless!
+ */
+function TopDownCutoutSvg({ waveWipe = 0 }) {
+  // waveWipe in [0, 1]: 0 = 100% photorealistic silver/black top-down cutout, 1 = wiped away from top to bottom!
+  const yCut = -40 + waveWipe * 640;
+  const wavePath = `M -20 ${yCut} Q 45 ${yCut + 26} 90 ${yCut - 14} T 200 ${yCut + 12} L 200 620 L -20 620 Z`;
+
+  // Exact matching coordinates for 4 barrels + 3 couplers when scale = 68, stepX = 0.9312 -> stepPx = 63.32px around cy = 270!
+  const stepPx = 63.32;
+  const barrelYs = [
+    270 - 1.5 * stepPx,
+    270 - 0.5 * stepPx,
+    270 + 0.5 * stepPx,
+    270 + 1.5 * stepPx,
+  ];
+  const couplerYs = [270 - stepPx, 270, 270 + stepPx];
+
+  return (
+    <svg
+      viewBox="0 0 180 540"
+      width="180"
+      height="540"
+      className="flight-photo-svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <clipPath id="koma-liquid-wipe-clip">
+          <path d={wavePath} />
+        </clipPath>
+        <linearGradient id="koma-shell-metal" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F5F7F9" />
+          <stop offset="45%" stopColor="#B8C0C8" />
+          <stop offset="80%" stopColor="#5E6670" />
+          <stop offset="100%" stopColor="#D6DCE2" />
+        </linearGradient>
+        <radialGradient id="koma-coupler-glass" cx="38%" cy="38%" r="65%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="52%" stopColor="#9DA6B0" />
+          <stop offset="85%" stopColor="#464E56" />
+          <stop offset="100%" stopColor="#D8DFE6" />
+        </radialGradient>
+      </defs>
+
+      <g clipPath="url(#koma-liquid-wipe-clip)">
+        {/* Subtle soft studio drop shadow */}
+        {barrelYs.map((by, idx) => (
+          <circle
+            key={`sh-${idx}`}
+            cx="93"
+            cy={by + 4}
+            r="25"
+            fill="rgba(20, 24, 28, 0.14)"
+          />
+        ))}
+
+        {/* Silver connecting saddles & 3 Schott crystal couplers */}
+        {couplerYs.map((cy, idx) => (
+          <g key={`cp-${idx}`}>
+            <rect
+              x="76"
+              y={cy - 22}
+              width="28"
+              height="44"
+              rx="6"
+              fill="url(#koma-shell-metal)"
+            />
+            <circle
+              cx="90"
+              cy={cy}
+              r="9.2"
+              fill="url(#koma-coupler-glass)"
+              stroke="#5A626B"
+              strokeWidth="0.9"
+            />
+            <circle cx="90" cy={cy} r="5.4" fill="#AEB6BF" />
+          </g>
+        ))}
+
+        {/* 4 Satin-Brushed Titanium Barrels with jet-black velvet optical bores */}
+        {barrelYs.map((by, idx) => (
+          <g key={`br-${idx}`}>
+            <circle cx="90" cy={by} r="24.5" fill="url(#koma-shell-metal)" />
+            <circle cx="90" cy={by} r="22.3" fill="#06080B" />
+            <circle
+              cx="86"
+              cy={by - 4}
+              r="16"
+              fill="none"
+              stroke="rgba(210, 226, 245, 0.14)"
+              strokeWidth="1.2"
+            />
+          </g>
+        ))}
+      </g>
+    </svg>
+  );
 }
 
 export function StoryBand({ onOpenDrawer, onAddItem }) {
-  // Pinned scroll track refs (driven directly at 60fps via RAF, zero per-frame React re-renders)
-  const act1TrackRef = useRef(null);
-  const act1HeadlineRef = useRef(null);
-  const act1StripRef = useRef(null);
-  const act1DimsRef = useRef(null);
-  const act1ThesisRef = useRef(null);
+  // Master 1360vh single-stage continuous scroll container (exact Otto 13.5x VH unbroken timeline!)
+  const masterTrackRef = useRef(null);
 
-  const act2TrackRef = useRef(null);
-  const act2PhotoRef = useRef(null);
-  const act2BlueprintRef = useRef(null);
-  const act2IrisGroupRefs = useRef([]);
-  const act2SnellRef = useRef(null);
-  const act2MetaRef = useRef(null);
+  // Phase 1 refs: Monumental Split Headline + Rising Filmstrip + Split Lead Thesis
+  const headlineWrapRef = useRef(null);
+  const headlineLineRefs = useRef([]);
+  const dimRailRef = useRef(null);
+  const orthoStripRef = useRef(null);
+  const splitThesisRef = useRef(null);
 
-  const act3TrackRef = useRef(null);
-  const act3FrameRefs = useRef([]);
+  // Phase 2 & 3 refs: Center Pinned Flight Object (Photo -> Liquid Wipe -> Real-Time 3D Wireframe Canvas) + Step Titles
+  const flightStageRef = useRef(null);
+  const wireCanvasRef = useRef(null);
+  const formsRailRef = useRef(null);
+  const bigStepRefs = useRef([]);
 
-  const act4TrackRef = useRef(null);
-  const act4CanvasRef = useRef(null);
+  // Phase 4 refs: 3D Orbital Photo Vortex + Flying Docked Edition Card
+  const spiralStageRef = useRef(null);
+  const spiralCardRefs = useRef([]);
+  const flyingDockCardRef = useRef(null);
+  const dockChromeRef = useRef(null);
+  const dockFlankLeftRef = useRef(null);
+  const dockFlankRightRef = useRef(null);
 
-  const [activeTStop, setActiveTStop] = useState('1.4');
+  // Phase 5 refs: Real-Time 3D Isometric Morph Canvas (I, II, III) + Self-Drawing Full-Bleed Studio Room SVG
+  const roomStageRef = useRef(null);
+  const editionsCanvasRef = useRef(null);
+  const roomSvgRef = useRef(null);
+  const roomPathRefs = useRef([]);
+  const roomCalloutsRef = useRef(null);
+
+  const [waveWipeState, setWaveWipeState] = useState(0);
+  const [activeFormStep, setActiveFormStep] = useState(0);
   const [selectedEditionId, setSelectedEditionId] = useState('prism-85');
-  const userLockedEditionRef = useRef(false);
-  const lastTStopRef = useRef('1.4');
-  const lastAutoEditionRef = useRef('prism-85');
 
+  const lastWaveRef = useRef(0);
+  const lastStepRef = useRef(0);
   const selectedEdition =
     PRISM_EDITIONS.find((ed) => ed.id === selectedEditionId) || PRISM_EDITIONS[2];
 
-  const handleSelectEdition = (editionId) => {
-    userLockedEditionRef.current = true;
-    setSelectedEditionId(editionId);
-  };
-
-  // Smooth damped 60fps Obys scroll choreography across all 4 Story Acts
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const smooth = { p1: 0, p2: 0, p3: 0, p4: 0 };
+    let smoothP = 0;
     let rafId = 0;
 
-    const trackProgress = (el) => {
+    // Measure SVG path lengths once for crisp stroke-dashoffset self-drawing room lines!
+    roomPathRefs.current.forEach((pathEl) => {
+      if (!pathEl || pathEl.dataset.lenReady) return;
+      try {
+        const len = pathEl.getTotalLength();
+        pathEl.style.strokeDasharray = `${len.toFixed(1)}`;
+        pathEl.style.strokeDashoffset = `${len.toFixed(1)}`;
+        pathEl.dataset.totalLen = String(len);
+        pathEl.dataset.lenReady = '1';
+      } catch {}
+    });
+
+    const getRawProgress = () => {
+      const el = masterTrackRef.current;
       if (!el) return 0;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight || 900;
-      const travel = Math.max(1, rect.height - vh);
+      // Reserve the final 100vh of masterTrack so the isometric CAD room stays pinned
+      // while the #collection dark curtain physically wipes up over it (exact Otto s17).
+      const travel = Math.max(1, rect.height - vh * 2);
       return clamp01(-rect.top / travel);
     };
 
-    const applyChoreography = (immediate = false) => {
-      const isMobile = window.innerWidth < 768;
-      if (isMobile || reducedMotion) {
-        if (act1StripRef.current) act1StripRef.current.style.transform = '';
-        if (act1HeadlineRef.current) {
-          act1HeadlineRef.current.style.transform = '';
-          act1HeadlineRef.current.style.opacity = '1';
-        }
-        if (act1DimsRef.current) act1DimsRef.current.style.opacity = '1';
-        if (act1ThesisRef.current) {
-          act1ThesisRef.current.style.transform = '';
-          act1ThesisRef.current.style.opacity = '1';
-        }
-        if (act2PhotoRef.current) act2PhotoRef.current.style.opacity = '0';
-        if (act2BlueprintRef.current) {
-          act2BlueprintRef.current.style.transform = '';
-          act2BlueprintRef.current.style.opacity = '1';
-        }
-        if (act4CanvasRef.current) act4CanvasRef.current.style.transform = '';
-        return;
-      }
-
-      const raw1 = trackProgress(act1TrackRef.current);
-      const raw2 = trackProgress(act2TrackRef.current);
-      const raw3 = trackProgress(act3TrackRef.current);
-      const raw4 = trackProgress(act4TrackRef.current);
-
-      const lerp = immediate ? 1 : 0.14;
-      smooth.p1 += (raw1 - smooth.p1) * lerp;
-      smooth.p2 += (raw2 - smooth.p2) * lerp;
-      smooth.p3 += (raw3 - smooth.p3) * lerp;
-      smooth.p4 += (raw4 - smooth.p4) * lerp;
-
-      // -----------------------------------------------------------------------
-      // ACT 1: Pinned Monumental Split Headline + Orthographic Filmstrip Glide
-      // -----------------------------------------------------------------------
-      const p1 = smooth.p1;
+    const renderFrame = (immediate = false) => {
+      const vw = window.innerWidth || 1440;
       const vh = window.innerHeight || 900;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      // Filmstrip enters below headline, pierces straight up through the giant type, exits smoothly
-      const stripProgress = clamp01(p1 / 0.78);
-      const stripY = (0.38 - stripProgress * 1.48) * vh;
-      if (act1StripRef.current) {
-        act1StripRef.current.style.transform = `translate3d(0, ${stripY.toFixed(1)}px, 0)`;
+      const mScale = vw < 768 ? Math.min(1, (vw - 24) / 560) : 1;
+      const rawP = getRawProgress();
+      if (immediate || reducedMotion) {
+        smoothP = rawP;
+      } else {
+        smoothP += (rawP - smoothP) * 0.135;
       }
+      const p = smoothP;
 
-      // Headline & outer dimension rail gently settle out as editorial thesis rises at p1 > 0.68
-      const headFade = 1 - clamp01((p1 - 0.62) / 0.22);
-      const headDriftY = -clamp01((p1 - 0.58) / 0.34) * 56;
-      if (act1HeadlineRef.current) {
-        act1HeadlineRef.current.style.opacity = headFade.toFixed(3);
-        act1HeadlineRef.current.style.transform = `translate3d(0, ${headDriftY.toFixed(1)}px, 0)`;
-      }
-      if (act1DimsRef.current) {
-        act1DimsRef.current.style.opacity = headFade.toFixed(3);
-      }
+      // Also check entry progress as #story rises over Hero (rect.top from vh -> 0)
+      const trackRect = masterTrackRef.current?.getBoundingClientRect();
+      const entryReveal = trackRect
+        ? clamp01((vh - trackRect.top) / (vh * 0.82))
+        : 1;
 
-      // Editorial thesis & RESERVE NOW emerge cleanly in center stage at end of Act 1
-      const thesisIn = easeOutCubic(clamp01((p1 - 0.68) / 0.24));
-      if (act1ThesisRef.current) {
-        act1ThesisRef.current.style.opacity = thesisIn.toFixed(3);
-        act1ThesisRef.current.style.transform = `translate3d(0, ${((1 - thesisIn) * 44).toFixed(1)}px, 0)`;
-        act1ThesisRef.current.style.pointerEvents = thesisIn > 0.45 ? 'auto' : 'none';
-      }
-
-      // -----------------------------------------------------------------------
-      // ACT 2: Pinned Top-Down Photo -> 1px CAD Blueprint Morph & 90deg Spin
-      // -----------------------------------------------------------------------
-      const p2 = smooth.p2;
-      // Phase A (0.00 -> 0.28): Top-down photo enters & dissolves cleanly into CAD blueprint
-      const photoOpacity = p2 < 0.08
-        ? easeOutCubic(p2 / 0.08)
-        : 1 - easeInOutCubic(clamp01((p2 - 0.14) / 0.18));
-      const photoScale = 0.72 + easeOutCubic(clamp01(p2 / 0.28)) * 0.36;
-      if (act2PhotoRef.current) {
-        act2PhotoRef.current.style.opacity = clamp01(photoOpacity).toFixed(3);
-        act2PhotoRef.current.style.transform = `scale(${photoScale.toFixed(3)})`;
-      }
-
-      // Phase B (0.18 -> 0.86): 1px CAD Blueprint emerges, rotates 0 -> 90deg, scales gracefully
-      const bpIn = easeOutCubic(clamp01((p2 - 0.14) / 0.18));
-      const bpOut = 1 - easeInOutCubic(clamp01((p2 - 0.86) / 0.14));
-      const bpOpacity = bpIn * bpOut;
-      const spinPhase = easeInOutCubic(clamp01((p2 - 0.26) / 0.56));
-      const bpRotateDeg = spinPhase * 90;
-      const bpScale = 0.82 + bpIn * 0.22 - (1 - bpOut) * 0.14;
-
-      if (act2BlueprintRef.current) {
-        act2BlueprintRef.current.style.opacity = bpOpacity.toFixed(3);
-        act2BlueprintRef.current.style.transform = `rotate(${bpRotateDeg.toFixed(2)}deg) scale(${bpScale.toFixed(3)})`;
-      }
-
-      // Synchronized 9-blade iris rotation + Snell ray shift
-      const irisPhase = Math.sin(clamp01((p2 - 0.18) / 0.72) * Math.PI);
-      const irisDeg = spinPhase * 62;
-      act2IrisGroupRefs.current.forEach((g, idx) => {
-        if (!g) return;
-        const mult = idx === 1 ? 1.35 : -0.9;
-        const irisScale = 1 - irisPhase * 0.22;
-        g.setAttribute(
-          'transform',
-          `rotate(${(irisDeg * mult).toFixed(2)}) scale(${irisScale.toFixed(3)})`
-        );
+      // =====================================================================
+      // PHASE 1 (p = 0.000 .. 0.200): SPLIT HEADLINE + FILMSTRIP -> SPLIT THESIS (s01 -> s03 -> s04)
+      // =====================================================================
+      headlineLineRefs.current.forEach((lineEl, idx) => {
+        if (!lineEl) return;
+        const staggerReveal = easeOutCubic((entryReveal - idx * 0.14) / 0.62);
+        const yPct = (1 - staggerReveal) * 108;
+        lineEl.style.transform = `translate3d(0, ${yPct.toFixed(1)}%, 0)`;
       });
 
-      if (act2SnellRef.current) {
-        const offset = 34 - irisPhase * 18;
-        act2SnellRef.current.setAttribute('y1', (270 - offset).toFixed(1));
-        act2SnellRef.current.setAttribute('y2', (270 + offset).toFixed(1));
+      const headScrollUp = -clamp01(p / 0.125) * vh * 0.92;
+      const headOpacity = 1 - smoothStep(0.095, 0.135, p);
+      if (headlineWrapRef.current) {
+        headlineWrapRef.current.style.transform = `translate3d(0, ${headScrollUp.toFixed(1)}px, 0)`;
+        headlineWrapRef.current.style.opacity = headOpacity.toFixed(3);
+      }
+      if (dimRailRef.current) {
+        dimRailRef.current.style.transform = `translate3d(0, ${(headScrollUp * 0.65).toFixed(1)}px, 0)`;
+        dimRailRef.current.style.opacity = headOpacity.toFixed(3);
       }
 
-      if (act2MetaRef.current) {
-        act2MetaRef.current.style.opacity = bpOpacity.toFixed(3);
+      // 3 square photographic plates glide straight up through the giant headline split and exit top by p = 0.155
+      if (orthoStripRef.current) {
+        const stripT = clamp01(p / 0.165);
+        const stripY = (0.44 - stripT * 1.72) * vh;
+        orthoStripRef.current.style.transform = `translate3d(-50%, ${stripY.toFixed(1)}px, 0)`;
+        orthoStripRef.current.style.opacity = (1 - smoothStep(0.145, 0.17, p)).toFixed(3);
       }
 
-      const nextTStop = (1.4 + irisPhase * 10.6).toFixed(1);
-      if (nextTStop !== lastTStopRef.current) {
-        lastTStopRef.current = nextTStop;
-        setActiveTStop(nextTStop);
+      // Split Lead Thesis ("THE FIRST M [●] ODULAR...") rises into center around the 4th top-down cutout at p = 0.09..0.14,
+      // then glides cleanly off the top of the screen across p = 0.15..0.225 (exact Otto s03 -> s04!)
+      if (splitThesisRef.current) {
+        const thesisIn = smoothStep(0.075, 0.12, p);
+        const thesisOut = smoothStep(0.145, 0.225, p);
+        const thesisY = (1 - thesisIn) * (vh * 0.56) - thesisOut * (vh * 0.78);
+        const thesisOp = thesisIn * (1 - smoothStep(0.195, 0.228, p));
+        splitThesisRef.current.style.transform = `translate3d(-50%, calc(-50% + ${thesisY.toFixed(1)}px), 0)`;
+        splitThesisRef.current.style.opacity = thesisOp.toFixed(3);
+        splitThesisRef.current.style.pointerEvents =
+          thesisOp > 0.55 ? 'auto' : 'none';
       }
 
-      // -----------------------------------------------------------------------
-      // ACT 3: Pinned 3D Orbital Diagonal Helix Flight (Otto .gallery soul)
-      // -----------------------------------------------------------------------
-      const p3 = smooth.p3;
-      const total = SPIRAL_FRAMES.length;
-      const vw = window.innerWidth || 1440;
-      const spreadX = Math.min(vw * 0.44, 620);
-      const spreadY = Math.min(vh * 0.36, 320);
-
-      for (let i = 0; i < total; i += 1) {
-        const node = act3FrameRefs.current[i];
-        if (!node) continue;
-        // Each card flies sequentially along a graceful centered 3D diagonal spiral from back-right -> center foreground -> bottom-left
-        const slotCenter = (i + 0.5) / total;
-        const delta = (p3 * 1.16 - 0.08) - slotCenter;
-        const norm = delta / 0.42;
-        const clampedNorm = Math.max(-1.35, Math.min(1.35, norm));
-
-        const theta = clampedNorm * Math.PI * 1.05 + i * 0.52;
-        const x = -clampedNorm * spreadX * 1.05 + Math.sin(theta) * (spreadX * 0.34);
-        const y = clampedNorm * spreadY * 0.92 - Math.cos(theta) * (spreadY * 0.36);
-        const z = (1 - Math.abs(clampedNorm)) * 320 - 180 + Math.cos(theta) * 80;
-        const rotY = -clampedNorm * 22 + Math.sin(theta) * 12;
-        const rotZ = -11 + clampedNorm * 12 + Math.cos(theta) * 5;
-
-        const life = clamp01(1 - Math.abs(norm));
-        const bell = Math.sin(life * Math.PI * 0.5);
-        const scale = 0.38 + bell * 0.82;
-        const opacity = norm < -1.05 || norm > 1.05 ? 0 : Math.pow(bell, 1.1);
-
-        node.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) rotateZ(${rotZ.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
-        node.style.opacity = opacity.toFixed(3);
-        node.style.zIndex = String(Math.round(bell * 40));
+      // =====================================================================
+      // PHASE 2 & 3 (p = 0.085 .. 0.505): FLIGHT TOP-DOWN CUTOUT -> LIQUID WIPE -> 3D WIREFRAME TUMBLE (s03 -> s09)
+      // =====================================================================
+      const flightVisible = p >= 0.075 && p <= 0.525;
+      if (flightStageRef.current) {
+        const enterFromStrip = smoothStep(0.075, 0.125, p);
+        const fadeIntoSpiral = 1 - smoothStep(0.475, 0.518, p);
+        const settleCenter = easeInOutCubic(clamp01((p - 0.145) / 0.065));
+        // Sits slightly higher (-48px) in s03 so its bottom barrels split the top 2 rows of text, then settles dead-center (0px) in s04.
+        const flightY =
+          (1 - enterFromStrip) * (vh * 0.54) -
+          (1 - settleCenter) * 48 -
+          (1 - fadeIntoSpiral) * 48;
+        const growScale = 0.60 + settleCenter * 0.40;
+        flightStageRef.current.style.opacity = flightVisible
+          ? (Math.min(1, enterFromStrip * 1.4) * fadeIntoSpiral).toFixed(3)
+          : '0';
+        flightStageRef.current.style.transform = `translate3d(-50%, calc(-50% + ${flightY.toFixed(1)}px), 0) scale(${(growScale * mScale).toFixed(3)})`;
       }
 
-      // -----------------------------------------------------------------------
-      // ACT 4: Pinned Isometric CAD Room Scrub + Progressive Edition Stepping
-      // -----------------------------------------------------------------------
-      const p4 = smooth.p4;
-      if (act4CanvasRef.current) {
-        const roomScale = 0.93 + easeOutCubic(clamp01(p4 / 0.45)) * 0.07;
-        const roomY = (1 - easeOutCubic(clamp01(p4 / 0.4))) * 26;
-        act4CanvasRef.current.style.transform = `translate3d(0, ${roomY.toFixed(1)}px, 0) scale(${roomScale.toFixed(3)})`;
+      // Liquid wave wipe strips photorealistic cutout across p = 0.215 .. 0.268 (exact Otto s05!)
+      const wipeVal = smoothStep(0.215, 0.268, p);
+      if (Math.abs(wipeVal - lastWaveRef.current) > 0.008) {
+        lastWaveRef.current = wipeVal;
+        setWaveWipeState(wipeVal);
       }
 
-      if (!userLockedEditionRef.current) {
-        const autoEd = p4 < 0.34 ? 'prism-35' : p4 < 0.68 ? 'prism-50' : 'prism-85';
-        if (autoEd !== lastAutoEditionRef.current) {
-          lastAutoEditionRef.current = autoEd;
-          setSelectedEditionId(autoEd);
+      // Draw Real-Time 3D Wireframe on High-DPI Canvas whenever p in [0.20, 0.525]!
+      const wireCanvas = wireCanvasRef.current;
+      if (wireCanvas && p >= 0.20 && p <= 0.525) {
+        const cw = 520;
+        const ch = 540;
+        if (wireCanvas.width !== cw * dpr || wireCanvas.height !== ch * dpr) {
+          wireCanvas.width = cw * dpr;
+          wireCanvas.height = ch * dpr;
+        }
+        const ctx = wireCanvas.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, cw, ch);
+
+        // At p <= 0.268: pure vertical Top-Down Plan (pitch = PI/2, yaw = 0, roll = PI/2) matching TopDownCutoutSvg 1:1!
+        // Across p = 0.268 .. 0.355: True 3D Tumble through diagonal s06 into upright three-quarter elevation s07!
+        const tumbleT = easeInOutCubic(clamp01((p - 0.268) / 0.088));
+        const orbitAfter = clamp01((p - 0.356) / 0.125);
+
+        const pitch = (1 - tumbleT) * (Math.PI * 0.5) + tumbleT * 0.30;
+        const roll = -(1 - tumbleT) * (Math.PI * 0.5);
+        const yaw = tumbleT * (-0.34 + orbitAfter * 0.46);
+        const persp = tumbleT * 0.085;
+        const wfScale = 68 + tumbleT * 26;
+
+        let stepIdx = 0;
+        let highlightMode = 'none';
+        if (p >= 0.335 && p < 0.39) {
+          stepIdx = 1;
+          highlightMode = 'barrels';
+        } else if (p >= 0.39 && p < 0.445) {
+          stepIdx = 2;
+          highlightMode = 'bridges';
+        } else if (p >= 0.445 && p < 0.505) {
+          stepIdx = 3;
+          highlightMode = 'all';
+        }
+        if (stepIdx !== lastStepRef.current) {
+          lastStepRef.current = stepIdx;
+          setActiveFormStep(stepIdx);
+        }
+
+        drawPrismWireframeAssembly(ctx, {
+          barrels: 4,
+          cx: cw * 0.5,
+          cy: ch * 0.5,
+          scale: wfScale,
+          pitch,
+          yaw,
+          roll,
+          persp,
+          paperFill: '#EEF0EC',
+          strokeMain: '#383C42',
+          strokeFine: '#7D848D',
+          highlightMode,
+          accentColor: '#181C20',
+          lineWidth: 1.0,
+        });
+        ctx.restore();
+      }
+
+      // 4-Column Horizon Step Rail (`01..03` | `FOUR BARRELS` | `THREE BRIDGES` | `ONE MONOLITH`) + Giant Bottom `120px` Titles (exact s07..s09!)
+      if (formsRailRef.current) {
+        const railIn = smoothStep(0.325, 0.35, p);
+        const railOut = 1 - smoothStep(0.475, 0.502, p);
+        formsRailRef.current.style.opacity = (railIn * railOut).toFixed(3);
+      }
+
+      const stepWindows = [
+        [0.33, 0.39],
+        [0.388, 0.445],
+        [0.443, 0.498],
+      ];
+      bigStepRefs.current.forEach((el, idx) => {
+        if (!el) return;
+        const [w0, w1] = stepWindows[idx];
+        const mid = (w0 + w1) * 0.5;
+        const enter = smoothStep(w0, mid - 0.008, p);
+        const exit = smoothStep(mid + 0.008, w1, p);
+        const yOff = (1 - enter) * 125 - exit * 125;
+        const op = enter * (1 - exit);
+        el.style.transform = `translate3d(0, ${yOff.toFixed(1)}%, 0)`;
+        el.style.opacity = op.toFixed(3);
+      });
+
+      // =====================================================================
+      // PHASE 4 (p = 0.485 .. 0.755): 3D ORBITAL PHOTO VORTEX -> FLYING EDITION CARD DOCKS CENTER (s10 -> s13)
+      // =====================================================================
+      const spiralActive = p >= 0.48 && p <= 0.77;
+      if (spiralStageRef.current) {
+        spiralStageRef.current.style.opacity = spiralActive ? '1' : '0';
+        spiralStageRef.current.style.pointerEvents =
+          p >= 0.62 && p <= 0.76 ? 'auto' : 'none';
+      }
+
+      if (spiralActive) {
+        const spT = clamp01((p - 0.485) / 0.195);
+        const total = SPIRAL_FRAMES.length;
+        const spreadX = Math.min(vw * 0.42, 590);
+        const spreadY = Math.min(vh * 0.36, 330);
+
+        for (let i = 0; i < total; i++) {
+          const card = spiralCardRefs.current[i];
+          if (!card) continue;
+          const slot = (i + 0.4) / total;
+          const delta = spT * 1.24 - 0.12 - slot;
+          const norm = delta / 0.44;
+          const cNorm = Math.max(-1.4, Math.min(1.4, norm));
+
+          const ang = cNorm * Math.PI * 1.1 + i * 0.68;
+          const x = Math.cos(ang) * spreadX * (0.48 + Math.abs(cNorm) * 0.46) - cNorm * 180;
+          const y = Math.sin(ang) * spreadY * 0.86 + cNorm * 140;
+          const z = (1 - Math.abs(cNorm)) * 260 - 220;
+          const rotZ = -14 + Math.sin(ang) * 12 + cNorm * 10;
+          const rotY = -cNorm * 24;
+
+          const life = clamp01(1 - Math.abs(norm));
+          const scatterOut = 1 - smoothStep(0.64, 0.695, p);
+          const op = Math.pow(Math.sin(life * Math.PI * 0.5), 1.15) * scatterOut;
+          const sc = 0.42 + life * 0.64;
+
+          card.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) rotateZ(${rotZ.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
+          card.style.opacity = op.toFixed(3);
         }
       }
+
+      // Flying White Edition Selector Card (`PRISM O (III)` · `(I) (II) (III)`) enters tilted from lower-right inside the spiral
+      // at p = 0.56 (s11 -> s12), untwists and docks dead-center at p = 0.665..0.745 (s13), then hands off seamlessly to Phase 5 (s14)!
+      if (flyingDockCardRef.current) {
+        const cardAppear = smoothStep(0.555, 0.60, p);
+        const cardDock = easeOutCubic(clamp01((p - 0.56) / 0.105));
+        const cardDissolveToRoom = 1 - smoothStep(0.755, 0.79, p);
+
+        const cxOff = (1 - cardDock) * (vw * 0.16);
+        const cyOff = (1 - cardDock) * (vh * 0.34);
+        const cRotZ = (1 - cardDock) * -12.5;
+        const cRotY = (1 - cardDock) * 16;
+        const cScale = 0.52 + cardDock * 0.48;
+
+        flyingDockCardRef.current.style.opacity = (
+          cardAppear * cardDissolveToRoom
+        ).toFixed(3);
+        flyingDockCardRef.current.style.transform = `translate3d(calc(-50% + ${cxOff.toFixed(1)}px), calc(-50% + ${cyOff.toFixed(1)}px), 0) rotateY(${cRotY.toFixed(2)}deg) rotateZ(${cRotZ.toFixed(2)}deg) scale(${cScale.toFixed(3)})`;
+        flyingDockCardRef.current.style.pointerEvents =
+          p >= 0.64 && p <= 0.76 ? 'auto' : 'none';
+      }
+
+      // Card text/boxes & side captions (`THREE EDITIONS` / `CHOOSE YOURS`) visible during flight, dissolving cleanly across p = 0.735..0.775
+      const chromeOp =
+        smoothStep(0.555, 0.60, p) * (1 - smoothStep(0.735, 0.772, p));
+      const flankOp =
+        smoothStep(0.65, 0.68, p) * (1 - smoothStep(0.735, 0.772, p));
+      if (dockChromeRef.current) {
+        dockChromeRef.current.style.opacity = chromeOp.toFixed(3);
+      }
+      if (dockFlankLeftRef.current) {
+        dockFlankLeftRef.current.style.opacity = flankOp.toFixed(3);
+      }
+      if (dockFlankRightRef.current) {
+        dockFlankRightRef.current.style.opacity = flankOp.toFixed(3);
+      }
+
+      // =====================================================================
+      // PHASE 5 (p = 0.755 .. 1.000): 3 EDITIONS ROTATE IN 3D INTO ISOMETRIC + FULL-SCREEN STUDIO ROOM SELF-DRAWS (s14 -> s17)
+      // =====================================================================
+      const roomActive = p >= 0.70;
+      if (roomStageRef.current) {
+        roomStageRef.current.style.opacity = roomActive
+          ? smoothStep(0.70, 0.74, p).toFixed(3)
+          : '0';
+        roomStageRef.current.style.pointerEvents = p >= 0.85 ? 'auto' : 'none';
+      }
+
+      if (roomActive && editionsCanvasRef.current) {
+        const ec = editionsCanvasRef.current;
+        const rw = vw;
+        const rh = vh;
+        if (ec.width !== Math.round(rw * dpr) || ec.height !== Math.round(rh * dpr)) {
+          ec.width = Math.round(rw * dpr);
+          ec.height = Math.round(rh * dpr);
+        }
+        const ctx = ec.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, rw, rh);
+
+        // tIso 0: exact flat front elevations locked onto the 3 tiles of the docked card.
+        // tIso 1: scaled 3D isometric instruments standing on the studio table.
+        const tIso = easeInOutCubic(clamp01((p - 0.775) / 0.10));
+        const isoPitch = tIso * 0.35;
+        const isoYaw = tIso * -0.52;
+
+        // Room SVG uses xMidYMid slice on a 1440x900 viewBox: map its coordinates exactly.
+        const sl = Math.max(rw / 1440, rh / 900);
+        const ox = (rw - 1440 * sl) * 0.5;
+        const oy = (rh - 900 * sl) * 0.5;
+        const mapX = (x) => ox + x * sl;
+        const mapY = (y) => oy + y * sl;
+
+        const tilePitch = vw < 768 ? vw * 0.31 : 171;
+        const k = tilePitch / 171;
+        const flatScale = 28 * k;
+        const targetIsoScale = vw < 768 ? 36 : 66 * sl;
+        const isoScale = flatScale + tIso * (targetIsoScale - flatScale);
+        const tileY = rh * 0.5 - 35 * (vw < 768 ? k : 1);
+
+        const specs =
+          vw < 768
+            ? [
+                { barrels: 2, x0: rw * 0.5 - tilePitch, x1: rw * 0.21, y1: mapY(476) },
+                { barrels: 3, x0: rw * 0.5, x1: rw * 0.48, y1: mapY(470) },
+                { barrels: 4, x0: rw * 0.5 + tilePitch, x1: rw * 0.78, y1: mapY(464) },
+              ]
+            : [
+                { barrels: 2, x0: rw * 0.5 - tilePitch, x1: mapX(484), y1: mapY(472) },
+                { barrels: 3, x0: rw * 0.5, x1: mapX(682), y1: mapY(468) },
+                { barrels: 4, x0: rw * 0.5 + tilePitch, x1: mapX(924), y1: mapY(462) },
+              ];
+
+        specs.forEach((sp, idx) => {
+          const curX = sp.x0 + (sp.x1 - sp.x0) * tIso;
+          const curY = tileY + (sp.y1 - tileY) * tIso;
+          const isChosen = PRISM_EDITIONS[idx]?.id === selectedEditionId && tIso > 0.7;
+
+          drawPrismWireframeAssembly(ctx, {
+            barrels: sp.barrels,
+            cx: curX,
+            cy: curY,
+            scale: isoScale,
+            pitch: isoPitch,
+            yaw: isoYaw,
+            roll: 0,
+            persp: tIso * 0.05,
+            paperFill: '#EEF0EC',
+            strokeMain: isChosen ? '#181C20' : '#3A3E44',
+            strokeFine: '#7D848D',
+            highlightMode: isChosen ? 'all' : 'none',
+            accentColor: '#181C20',
+            lineWidth: 1.0,
+          });
+        });
+
+        ctx.restore();
+      }
+
+      // Progressive stroke-dashoffset self-drawing of the full-bleed isometric studio table, chair/bench, & architectural walls (s15 -> s16!)
+      const drawRoomT = clamp01((p - 0.825) / 0.125);
+      roomPathRefs.current.forEach((pathEl, idx) => {
+        if (!pathEl) return;
+        const totalLen = Number(pathEl.dataset.totalLen || 1200);
+        const localT = easeInOutCubic(clamp01((drawRoomT - idx * 0.055) / 0.68));
+        pathEl.style.strokeDashoffset = `${((1 - localT) * totalLen).toFixed(1)}`;
+        pathEl.style.opacity = localT > 0.01 ? '1' : '0';
+      });
+
+      if (roomCalloutsRef.current) {
+        roomCalloutsRef.current.style.opacity = smoothStep(0.90, 0.945, p).toFixed(3);
+      }
     };
 
-    applyChoreography(true);
+    renderFrame(true);
 
-    const loop = () => {
-      applyChoreography(false);
-      rafId = requestAnimationFrame(loop);
+    const tick = () => {
+      renderFrame(false);
+      rafId = requestAnimationFrame(tick);
     };
-    rafId = requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(tick);
 
-    return () => {
-      cancelAnimationFrame(rafId);
-    };
-  }, []);
+    return () => cancelAnimationFrame(rafId);
+  }, [selectedEditionId]);
+
+  const registerRoomPath = (idx) => (el) => {
+    roomPathRefs.current[idx] = el;
+  };
 
   return (
     <section id="story" data-band="paper" className="koma-band story-band">
-      {/* ACT 1: Pinned Monumental Split Headline + Rising Orthographic Filmstrip */}
-      <div ref={act1TrackRef} className="story-act-hero-track">
-        <div className="story-act-hero-sticky">
+      {/* ONE UNIFIED 1360vh CONTINUOUS STORY TRACK WITH ONE 100vh STICKY STAGE (exact Otto 13.5x VH unbroken flow!) */}
+      <div ref={masterTrackRef} className="story-master-track">
+        <div className="story-master-sticky">
+          {/* 1. MONUMENTAL 3-LINE MASKED HEADLINE + 4-COL DIMENSION RAIL (s01 -> s02) */}
           <div
-            ref={act1HeadlineRef}
+            ref={headlineWrapRef}
             className="story-split-headline"
             aria-label="PRISM O (III) Machined to Hold Pure Optical Light"
           >
-            <h2 className="t120 story-headline-line">PRISM O (III)</h2>
-            <p className="t120 story-headline-line" aria-hidden="true">
-              MACHINED TO HOLD
+            <h2 className="t120 story-line-mask">
+              <span
+                ref={(el) => {
+                  headlineLineRefs.current[0] = el;
+                }}
+                className="story-line-inner"
+              >
+                PRISM O (III)
+              </span>
+            </h2>
+            <p className="t120 story-line-mask" aria-hidden="true">
+              <span
+                ref={(el) => {
+                  headlineLineRefs.current[1] = el;
+                }}
+                className="story-line-inner"
+              >
+                MACHINED TO HOLD
+              </span>
             </p>
-            <p className="t120 story-headline-line" aria-hidden="true">
-              PURE OPTICAL LIGHT
+            <p className="t120 story-line-mask" aria-hidden="true">
+              <span
+                ref={(el) => {
+                  headlineLineRefs.current[2] = el;
+                }}
+                className="story-line-inner"
+              >
+                PURE OPTICAL LIGHT
+              </span>
             </p>
           </div>
 
-          {/* 4-column razor-sharp technical dimension rail pinned at outer edges */}
-          <div ref={act1DimsRef} className="story-dim-rail" aria-label="Optical Specifications">
-            <span className="t12 num">OD 95 MM</span>
-            <span className="t12 num">L 82 MM</span>
-            <span className="t12 num">T1.4 / 9 BLADES</span>
-            <span className="t12">PL / LPL MOUNT</span>
+          <div ref={dimRailRef} className="story-dim-rail" aria-label="Optical Specifications">
+            <span className="t12 num">W 260 mm</span>
+            <span className="t12 num">D 50 mm</span>
+            <span className="t12 num">ø50 shell / ø18 bridge</span>
+            <span className="t12 num">H 215 mm</span>
           </div>
 
-          {/* Piercing vertical filmstrip of 4 museum orthographic studio plates gliding through the split */}
-          <div ref={act1StripRef} className="story-ortho-column">
+          {/* 2. RISING VERTICAL FILMSTRIP OF 3 SQUARE STUDIO PLATES (s01 -> s02 -> exits top in s03) */}
+          <div ref={orthoStripRef} className="story-ortho-column">
             {STORY_ORTHO_PLATES.map((plate) => (
               <figure key={plate.id} className="story-ortho-plate">
                 <img
@@ -295,351 +623,360 @@ export function StoryBand({ onOpenDrawer, onAddItem }) {
             ))}
           </div>
 
-          {/* Editorial thesis emerging smoothly in center stage as filmstrip clears */}
-          <div ref={act1ThesisRef} className="story-thesis-block">
-            <p className="t30 story-thesis-copy">
-              THE FIRST MODULAR CINEMA INSTRUMENT BY KOMA OPTICS. GRADE-5 TITANIUM
-              AND SCHOTT GLASS, MACHINED FOR ABSOLUTE OPTICAL CLARITY.
-            </p>
-            <button
-              type="button"
-              className="editorial-link story-reserve-link"
-              onClick={(e) => onOpenDrawer(e.currentTarget)}
-            >
-              RESERVE NOW
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ACT 2: Pinned Top-Down Photo -> 1px Architectural Optical CAD Blueprint Morph & Spin */}
-      <div ref={act2TrackRef} className="story-act-cad-track">
-        <div className="story-cad-sticky">
-          <div className="story-cad-stage">
-            <div className="story-cad-morph-stack">
-              {/* Top-down physical optical plate morphing into 1px CAD plan */}
-              <img
-                ref={act2PhotoRef}
-                src="./media/plate-ortho-top.jpg"
-                alt="Top-down orthographic studio photograph of KOMA PRISM O (III) tri-barrel glass elements"
-                className="story-cad-photo-morph"
-                loading="eager"
-                decoding="async"
-              />
-
-              <div ref={act2BlueprintRef} className="story-cad-blueprint-layer">
-                <svg
-                  viewBox="0 0 360 540"
-                  width="360"
-                  height="540"
-                  className="story-cad-svg"
-                  role="img"
-                  aria-label="Scroll-interactive architectural 1px CAD plan of KOMA PRISM O (III) tri-barrel cross-section and 9-blade iris diaphragm"
-                  data-art="optical-cad-blueprint"
-                >
-                  <line
-                    x1="180"
-                    y1="14"
-                    x2="180"
-                    y2="526"
-                    stroke="#6F7780"
-                    strokeWidth="0.65"
-                    strokeDasharray="3 5"
-                  />
-
-                  {[112, 270, 428].map((cy, idx) => (
-                    <g key={cy} transform={`translate(180, ${cy})`}>
-                      <circle cx="0" cy="0" r="62" fill="none" stroke="#181C20" strokeWidth="1.05" />
-                      <circle cx="0" cy="0" r="57.5" fill="none" stroke="#4E565F" strokeWidth="0.7" />
-                      <circle cx="0" cy="0" r="51" fill="none" stroke="#181C20" strokeWidth="0.95" />
-
-                      <g
-                        ref={(el) => {
-                          act2IrisGroupRefs.current[idx] = el;
-                        }}
-                      >
-                        {Array.from({ length: 9 }).map((_, bi) => {
-                          const a0 = (bi / 9) * Math.PI * 2;
-                          const a1 = ((bi + 2.3) / 9) * Math.PI * 2;
-                          const xOuter = Math.cos(a0) * 50;
-                          const yOuter = Math.sin(a0) * 50;
-                          const xInner = Math.cos(a1) * 32;
-                          const yInner = Math.sin(a1) * 32;
-                          return (
-                            <line
-                              key={bi}
-                              x1={xOuter.toFixed(1)}
-                              y1={yOuter.toFixed(1)}
-                              x2={xInner.toFixed(1)}
-                              y2={yInner.toFixed(1)}
-                              stroke="#4E565F"
-                              strokeWidth="0.72"
-                            />
-                          );
-                        })}
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r="32"
-                          fill="none"
-                          stroke={idx === 1 ? '#9E430E' : '#181C20'}
-                          strokeWidth={idx === 1 ? '1.15' : '0.8'}
-                        />
-                      </g>
-                    </g>
-                  ))}
-
-                  {[191, 349].map((cy) => (
-                    <g key={cy} transform={`translate(180, ${cy})`}>
-                      <circle cx="0" cy="0" r="16.5" fill="#EEF0EC" stroke="#181C20" strokeWidth="1" />
-                      <circle cx="0" cy="0" r="12.5" fill="none" stroke="#4E565F" strokeWidth="0.7" />
-                      <path
-                        d="M -26 -14 Q -16 0 -26 14 M 26 -14 Q 16 0 26 14"
-                        fill="none"
-                        stroke="#181C20"
-                        strokeWidth="0.85"
-                      />
-                    </g>
-                  ))}
-
-                  <line
-                    ref={act2SnellRef}
-                    x1="54"
-                    y1="236"
-                    x2="306"
-                    y2="304"
-                    stroke="#9E430E"
-                    strokeWidth="0.75"
-                    strokeDasharray="4 4"
-                  />
-                </svg>
+          {/* 3. SPLIT EDITORIAL LEAD THESIS PHYSICALLY DIVIDED AROUND THE 4TH TOP-DOWN CUTOUT (exact Otto s03) */}
+          <div ref={splitThesisRef} className="story-split-thesis">
+            <div className="split-thesis-rows" aria-label="The first modular optic object by KOMA Lab Prism O III. An object machined for pure cinema light.">
+              <div className="split-thesis-row t30" aria-hidden="true">
+                <span className="split-thesis-left">THE FIRST M</span>
+                <span className="split-thesis-gap" />
+                <span className="split-thesis-right">ODULAR OPTIC</span>
+              </div>
+              <div className="split-thesis-row t30" aria-hidden="true">
+                <span className="split-thesis-left">OBJECT BY KOM</span>
+                <span className="split-thesis-gap" />
+                <span className="split-thesis-right">A PRISM O (III).</span>
+              </div>
+              <div className="split-thesis-row t30" aria-hidden="true">
+                <span className="split-thesis-left">AN OBJECT</span>
+                <span className="split-thesis-gap--narrow" />
+                <span className="split-thesis-right">MACHINED FOR</span>
+              </div>
+              <div className="split-thesis-row split-thesis-row--joined t30" aria-hidden="true">
+                <span>PURE CINEMA LIGHT.</span>
               </div>
             </div>
 
-            <div ref={act2MetaRef} className="story-cad-meta">
-              <span className="t12 num">PLAN SECTION A-A · 1:2 SCALE</span>
-              <span className="t12 num">LIVE IRIS T{activeTStop} · 46.5MM CIRCLE</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ACT 3: Pinned 3D Orbital Diagonal Helix Gallery across wide-open #EEF0EC paper */}
-      <div ref={act3TrackRef} className="story-act-spiral" aria-label="Archival Optical Gallery">
-        <div className="spiral-sticky-viewport">
-          <div className="spiral-orbit-stage">
-            {SPIRAL_FRAMES.map((frame, index) => (
-              <figure
-                key={frame.id}
-                ref={(el) => {
-                  act3FrameRefs.current[index] = el;
-                }}
-                className="spiral-frame"
-              >
-                <img
-                  src={frame.src}
-                  alt={frame.alt}
-                  loading="eager"
-                  decoding="async"
-                />
-              </figure>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ACT 4: Pinned Isometric 1px Architectural Optical Bench Size Comparison */}
-      <div id="editions" ref={act4TrackRef} className="story-act-sizes-track">
-        <div className="story-act-sizes-sticky">
-          <div ref={act4CanvasRef} className="sizes-canvas-wrap">
-            <svg
-              viewBox="0 0 1240 620"
-              width="1240"
-              height="620"
-              className="sizes-isometric-svg"
-              role="img"
-              aria-label="Isometric 1px architectural line drawing comparing KOMA PRISM O modular editions (I) 35mm, (II) 50mm, and (III) 85mm on a studio optical bench"
-              data-art="isometric-bench-cad"
-            >
-              <line x1="340" y1="68" x2="340" y2="145" stroke="#6F7780" strokeWidth="0.9" />
-              <line x1="860" y1="44" x2="860" y2="210" stroke="#6F7780" strokeWidth="0.9" />
-              <line x1="200" y1="184" x2="295" y2="152" stroke="#6F7780" strokeWidth="0.9" />
-              <line x1="40" y1="352" x2="365" y2="246" stroke="#4E565F" strokeWidth="0.95" />
-              <line x1="150" y1="378" x2="365" y2="306" stroke="#4E565F" strokeWidth="0.8" />
-
-              <path
-                d="M 110 422 C 88 398 112 372 162 355 L 745 198 C 825 178 905 186 968 214 L 1110 282 C 1152 302 1155 338 1105 358 L 542 544 C 455 572 340 568 258 525 Z"
-                fill="#EEF0EC"
-                stroke="#181C20"
-                strokeWidth="1.05"
-              />
-              <line x1="158" y1="454" x2="158" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="296" y1="538" x2="296" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="412" y1="564" x2="412" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="560" y1="538" x2="560" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="652" y1="506" x2="652" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="842" y1="444" x2="842" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="955" y1="408" x2="955" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-              <line x1="1088" y1="364" x2="1088" y2="615" stroke="#4E565F" strokeWidth="0.9" />
-
-              {[
-                { id: 'prism-35', label: '(I)', baseX: 375, baseY: 425, count: 2, h: 158, len: '82' },
-                { id: 'prism-50', label: '(II)', baseX: 548, baseY: 424, count: 3, h: 176, len: '96' },
-                { id: 'prism-85', label: '(III)', baseX: 742, baseY: 422, count: 4, h: 196, len: '118' },
-              ].map((item) => {
-                const isSelected = selectedEditionId === item.id;
-                const strokeCol = isSelected ? '#9E430E' : '#181C20';
-                const strokeW = isSelected ? 1.45 : 0.95;
-                const dx = 42;
-                const dy = -12;
-                const rx = 22;
-                const ry = 8.5;
-
-                return (
-                  <g
-                    key={item.id}
-                    className="sizes-iso-group"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSelectEdition(item.id)}
-                  >
-                    <text
-                      x={item.baseX + ((item.count - 1) * dx) / 2}
-                      y={item.baseY + (item.count - 1) * dy - item.h - 24}
-                      textAnchor="middle"
-                      fill={strokeCol}
-                      fontSize="13"
-                      fontFamily="IBM Plex Mono, monospace"
-                      fontWeight={isSelected ? '500' : '400'}
-                    >
-                      {item.label}
-                    </text>
-
-                    {isSelected && (
-                      <g>
-                        <line
-                          x1={item.baseX - 38}
-                          y1={item.baseY - item.h}
-                          x2={item.baseX - 38}
-                          y2={item.baseY}
-                          stroke="#9E430E"
-                          strokeWidth="0.85"
-                          strokeDasharray="2 3"
-                        />
-                        <text
-                          x={item.baseX - 46}
-                          y={item.baseY - item.h / 2}
-                          textAnchor="end"
-                          fill="#9E430E"
-                          fontSize="11"
-                          fontFamily="IBM Plex Mono, monospace"
-                        >
-                          {item.len}MM
-                        </text>
-                        <line
-                          x1={item.baseX - rx}
-                          y1={item.baseY + 22}
-                          x2={item.baseX + (item.count - 1) * dx + rx}
-                          y2={item.baseY + (item.count - 1) * dy + 22}
-                          stroke="#9E430E"
-                          strokeWidth="0.85"
-                          strokeDasharray="2 3"
-                        />
-                        <text
-                          x={item.baseX + ((item.count - 1) * dx) / 2 + 12}
-                          y={item.baseY + 38}
-                          textAnchor="middle"
-                          fill="#9E430E"
-                          fontSize="11"
-                          fontFamily="IBM Plex Mono, monospace"
-                        >
-                          OD 95MM
-                        </text>
-                      </g>
-                    )}
-
-                    {Array.from({ length: item.count })
-                      .map((_, idx) => item.count - 1 - idx)
-                      .map((idx) => {
-                        const cx = item.baseX + idx * dx;
-                        const cy = item.baseY + idx * dy;
-                        const topY = cy - item.h;
-                        return (
-                          <g key={idx}>
-                            <path
-                              d={`M ${cx - rx} ${topY} L ${cx - rx} ${cy} A ${rx} ${ry} 0 0 0 ${cx + rx} ${cy} L ${cx + rx} ${topY} Z`}
-                              fill="#EEF0EC"
-                              stroke={strokeCol}
-                              strokeWidth={strokeW}
-                            />
-                            <path
-                              d={`M ${cx - rx} ${topY + item.h * 0.46} A ${rx} ${ry} 0 0 0 ${cx + rx} ${topY + item.h * 0.46}`}
-                              fill="none"
-                              stroke={strokeCol}
-                              strokeWidth="0.6"
-                            />
-                            <ellipse
-                              cx={cx}
-                              cy={topY}
-                              rx={rx}
-                              ry={ry}
-                              fill="#EEF0EC"
-                              stroke={strokeCol}
-                              strokeWidth={strokeW}
-                            />
-                            <ellipse
-                              cx={cx}
-                              cy={topY}
-                              rx={rx * 0.76}
-                              ry={ry * 0.7}
-                              fill="none"
-                              stroke={strokeCol}
-                              strokeWidth="0.65"
-                            />
-                          </g>
-                        );
-                      })}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-
-          <div className="sizes-controls-bar">
-            <div className="sizes-switcher" role="tablist" aria-label="Select PRISM O modular edition">
-              {PRISM_EDITIONS.map((ed) => {
-                const active = ed.id === selectedEditionId;
-                return (
-                  <button
-                    key={ed.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    className={`sizes-tab t12 ${active ? 'sizes-tab--active' : ''}`}
-                    onClick={() => handleSelectEdition(ed.id)}
-                  >
-                    {ed.roman} {ed.focal}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="sizes-live-readout">
-              <p className="t12 num sizes-live-dims">{selectedEdition.dimsLabel}</p>
-              <p className="t16 sizes-live-note">{selectedEdition.note}</p>
-            </div>
-
-            <div className="sizes-live-cta">
-              <span className="t12 num sizes-live-price">
-                FROM ${selectedEdition.priceUsd.toLocaleString('en-US')}
-              </span>
+            <div className="split-thesis-meta">
+              <p className="t12 num split-thesis-dims">
+                Dimensions:
+                <br />W 260 × D 50 × H 215 mm
+              </p>
+              <p className="t12 split-thesis-mat">In Grade-5 Titanium and Schott Glass</p>
               <button
                 type="button"
-                className="editorial-link"
-                onClick={(e) => onAddItem(selectedEdition.id, e.currentTarget)}
+                className="editorial-link split-thesis-cta"
+                onClick={(e) => onOpenDrawer(e.currentTarget)}
               >
-                RESERVE {selectedEdition.code}
+                RESERVE NOW
               </button>
             </div>
+          </div>
+
+          {/* 4. PINNED FLIGHT OBJECT: TOP-DOWN CUTOUT -> LIQUID WAVE WIPE -> REAL-TIME 3D WIREFRAME TUMBLE (s03 -> s09) */}
+          <div ref={flightStageRef} className="story-flight-stage">
+            <canvas
+              ref={wireCanvasRef}
+              className="story-wireframe-canvas"
+              aria-label="Scroll-driven 3D architectural wireframe rotating from top-down optical plan to isometric elevation"
+            />
+            {waveWipeState < 0.995 && (
+              <div className="story-flight-photo-overlay">
+                <TopDownCutoutSvg waveWipe={waveWipeState} />
+              </div>
+            )}
+          </div>
+
+          {/* 5. HORIZON STEP RAIL (`01 / 02 / 03`) + GIANT BOTTOM-RISING `120px` CHAPTER HEADLINES (exact Otto s07..s09!) */}
+          <div ref={formsRailRef} className="story-forms-rail" aria-hidden="true">
+            <span className="t12 num">
+              {activeFormStep > 0 ? `0${activeFormStep}` : '01'}
+            </span>
+            <span
+              className={`t12 story-forms-label ${activeFormStep === 1 ? 'is-active' : ''}`}
+            >
+              FOUR BARRELS
+            </span>
+            <span
+              className={`t12 story-forms-label ${activeFormStep === 2 ? 'is-active' : ''}`}
+            >
+              THREE BRIDGES
+            </span>
+            <span
+              className={`t12 story-forms-label ${activeFormStep === 3 ? 'is-active' : ''}`}
+            >
+              ONE MONOLITH
+            </span>
+          </div>
+
+          <div className="story-big-steps-stage" aria-hidden="true">
+            {['FOUR BARRELS', 'THREE BRIDGES', 'ONE MONOLITH'].map((label, idx) => (
+              <div key={label} className="story-big-step-mask">
+                <p
+                  ref={(el) => {
+                    bigStepRefs.current[idx] = el;
+                  }}
+                  className="t120 story-big-step-text"
+                >
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* 6. 3D ORBITAL PHOTO VORTEX + FLYING WHITE EDITION CARD DOCKING DEAD-CENTER (exact Otto s10 -> s13!) */}
+          <div ref={spiralStageRef} className="story-spiral-stage" id="editions">
+            <div className="spiral-vortex-field">
+              {SPIRAL_FRAMES.map((frame, index) => (
+                <figure
+                  key={frame.id}
+                  ref={(el) => {
+                    spiralCardRefs.current[index] = el;
+                  }}
+                  className={`spiral-photo-card spiral-photo-card--${frame.aspect}`}
+                >
+                  <img
+                    src={frame.src}
+                    alt={frame.alt}
+                    loading="eager"
+                    decoding="async"
+                  />
+                </figure>
+              ))}
+            </div>
+
+            <span
+              ref={dockFlankLeftRef}
+              className="t12 dock-flank-label dock-flank-label--left"
+            >
+              THREE EDITIONS
+            </span>
+            <span
+              ref={dockFlankRightRef}
+              className="t12 dock-flank-label dock-flank-label--right"
+            >
+              CHOOSE YOURS
+            </span>
+
+            <div ref={flyingDockCardRef} className="flying-edition-card">
+              <div ref={dockChromeRef} className="flying-edition-card__chrome">
+                <h3 className="flying-edition-card__title">{selectedEdition.name.split('·')[0].trim()}</h3>
+
+                <div
+                  className="flying-edition-card__grid"
+                  role="tablist"
+                  aria-label="Choose PRISM O modular edition"
+                >
+                  {PRISM_EDITIONS.map((ed) => {
+                    const isSelected = ed.id === selectedEditionId;
+                    return (
+                      <button
+                        key={ed.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isSelected}
+                        className={`edition-tile ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedEditionId(ed.id)}
+                      >
+                        <span className="t12 num edition-tile__roman">{ed.roman}</span>
+                        <div className="edition-tile__box">
+                          {/* Crisp 1px front elevation SVG matching exact tIso=0 coordinates! */}
+                          <svg
+                            viewBox="0 0 140 120"
+                            width="140"
+                            height="120"
+                            aria-hidden="true"
+                          >
+                            {Array.from({ length: ed.barrels }).map((_, bi) => {
+                              const step = 23;
+                              const x = 70 + (bi - (ed.barrels - 1) * 0.5) * step;
+                              return (
+                                <rect
+                                  key={bi}
+                                  x={x - 9.5}
+                                  y="22"
+                                  width="19"
+                                  height="76"
+                                  rx="1.5"
+                                  fill="#F7F8F6"
+                                  stroke="#2A2E33"
+                                  strokeWidth="0.95"
+                                />
+                              );
+                            })}
+                            {Array.from({ length: ed.barrels - 1 }).map((_, ci) => {
+                              const step = 23;
+                              const x = 70 + (ci + 0.5 - (ed.barrels - 1) * 0.5) * step;
+                              return (
+                                <rect
+                                  key={ci}
+                                  x={x - 3}
+                                  y="23"
+                                  width="6"
+                                  height="65"
+                                  rx="3"
+                                  fill="#F7F8F6"
+                                  stroke="#555C65"
+                                  strokeWidth="0.85"
+                                />
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flying-edition-card__meta">
+                  <p className="t12 num flying-edition-card__dims">
+                    Dimensions:
+                    <br />
+                    {selectedEdition.dimsLabel}
+                  </p>
+                  <p className="t12 flying-edition-card__mat">
+                    {selectedEdition.materialLabel}
+                  </p>
+                  <button
+                    type="button"
+                    className="editorial-link flying-edition-card__buy"
+                    onClick={(e) => onAddItem(selectedEdition.id, e.currentTarget)}
+                  >
+                    RESERVE FROM ${selectedEdition.priceUsd.toLocaleString('en-US')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 7. FULL-BLEED ISOMETRIC ARCHITECTURAL STUDIO ROOM + 3D ROTATING (I)/(II)/(III) MONOLITHS (exact Otto s14 -> s17!) */}
+          <div ref={roomStageRef} className="story-room-stage">
+            <svg
+              ref={roomSvgRef}
+              viewBox="0 0 1440 900"
+              preserveAspectRatio="xMidYMid slice"
+              className="story-room-svg"
+              aria-hidden="true"
+            >
+              {/* Background room corner verticals & architectural datum lines */}
+              <path
+                ref={registerRoomPath(0)}
+                d="M 402 0 L 402 252 M 976 0 L 976 355 M 1265 508 L 1440 456"
+                fill="none"
+                stroke="#585E66"
+                strokeWidth="0.95"
+              />
+
+              {/* Sculpted Studio Bench Backrest & Cylindrical Columns on Left (matching Otto s16 Chair + Table!) */}
+              <path
+                ref={registerRoomPath(1)}
+                d="M 28 368 C 14 362 12 342 28 334 L 498 182 C 512 178 522 188 522 204 L 522 308 C 522 322 512 332 496 338 L 36 492 C 20 496 12 486 12 470 Z"
+                fill="#EEF0EC"
+                stroke="#2E3236"
+                strokeWidth="1.0"
+              />
+              <path
+                ref={registerRoomPath(2)}
+                d="M 42 490 L 42 695 C 42 708 92 708 92 695 L 92 474 M 382 376 L 382 442 M 430 360 L 430 426 M 0 688 L 198 764 L 198 900 M 92 722 L 92 900"
+                fill="none"
+                stroke="#4A5058"
+                strokeWidth="0.95"
+              />
+
+              {/* Full-Bleed Rounded Architectural Studio Table Surface */}
+              <path
+                ref={registerRoomPath(3)}
+                d="M 164 598 C 108 572 118 532 192 508 L 892 318 C 984 294 1094 306 1168 342 L 1282 402 C 1332 428 1326 468 1254 494 L 578 724 C 472 758 342 752 252 704 Z"
+                fill="#EEF0EC"
+                stroke="#23272B"
+                strokeWidth="1.1"
+              />
+
+              {/* Table Cylindrical Pedestal Legs & Joinery Lines Extending to Bottom Viewport Edge */}
+              <path
+                ref={registerRoomPath(4)}
+                d="M 206 676 L 206 900 M 352 738 L 352 900 M 368 742 L 368 900 M 474 748 L 474 900 M 694 684 L 694 900 M 788 652 L 788 900 M 968 592 L 968 900 M 1078 554 L 1078 900 M 1228 504 L 1228 900 M 352 782 L 474 746"
+                fill="none"
+                stroke="#3A3E44"
+                strokeWidth="0.95"
+              />
+            </svg>
+
+            {/* Real-time 3D Isometric (I), (II), (III) Vector Canvas layered cleanly above the studio table */}
+            <canvas ref={editionsCanvasRef} className="story-editions-canvas" aria-hidden="true" />
+
+            {/* Foreground SVG layer for crisp unoccluded CAD dimension callouts & Roman numerals */}
+            <svg
+              viewBox="0 0 1440 900"
+              preserveAspectRatio="xMidYMid slice"
+              className="story-room-callouts-svg"
+              aria-hidden="true"
+            >
+              <g ref={roomCalloutsRef} style={{ opacity: 0 }}>
+                {[
+                  { roman: '(I)', x: 484, y: 472, wLabel: '120', span: 78 },
+                  { roman: '(II)', x: 682, y: 468, wLabel: '190', span: 112 },
+                  { roman: '(III)', x: 924, y: 462, wLabel: '260', span: 148 },
+                ].map((c, idx) => (
+                  <g
+                    key={c.roman}
+                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    onClick={() => setSelectedEditionId(PRISM_EDITIONS[idx].id)}
+                  >
+                    <text
+                      x={c.x}
+                      y={c.y - 124}
+                      textAnchor="middle"
+                      fill="#23272B"
+                      fontSize="13"
+                      fontFamily="Schibsted Grotesk, sans-serif"
+                      fontWeight="500"
+                    >
+                      {c.roman}
+                    </text>
+                    {/* Vertical height 215mm callout clear of left barrel wall */}
+                    <line
+                      x1={c.x - c.span * 0.76}
+                      y1={c.y - 92}
+                      x2={c.x - c.span * 0.76}
+                      y2={c.y + 84}
+                      stroke="#7D848D"
+                      strokeWidth="0.8"
+                      strokeDasharray="2 3"
+                    />
+                    <text
+                      x={c.x - c.span * 0.76 - 7}
+                      y={c.y + 2}
+                      textAnchor="end"
+                      fill="#4E565F"
+                      fontSize="9.5"
+                      fontFamily="IBM Plex Mono, monospace"
+                    >
+                      215
+                    </text>
+                    {/* Width 120 / 190 / 260mm isometric base callout clear below front arcs */}
+                    <line
+                      x1={c.x - c.span * 0.56}
+                      y1={c.y + 114}
+                      x2={c.x + c.span * 0.62}
+                      y2={c.y + 80}
+                      stroke="#7D848D"
+                      strokeWidth="0.8"
+                      strokeDasharray="2 3"
+                    />
+                    <text
+                      x={c.x + 12}
+                      y={c.y + 110}
+                      textAnchor="middle"
+                      fill="#4E565F"
+                      fontSize="9.5"
+                      fontFamily="IBM Plex Mono, monospace"
+                    >
+                      {c.wLabel}
+                    </text>
+                    <text
+                      x={c.x + c.span * 0.74}
+                      y={c.y + 68}
+                      textAnchor="start"
+                      fill="#4E565F"
+                      fontSize="9.5"
+                      fontFamily="IBM Plex Mono, monospace"
+                    >
+                      50
+                    </text>
+                  </g>
+                ))}
+              </g>
+            </svg>
           </div>
         </div>
       </div>

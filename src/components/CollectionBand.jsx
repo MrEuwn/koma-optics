@@ -107,6 +107,9 @@ export function CollectionBand({ onReserveItem }) {
                   <span className="t12 num col-card__dims-val">
                     {obj.dimensions}
                   </span>
+                  <span className="t12 col-card__status">
+                    {obj.status}
+                  </span>
                 </div>
               </div>
             </button>

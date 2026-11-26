@@ -79,14 +79,14 @@ export function FilterBenchBand({
 
         <div className="bench-horizon-col">
           {activeList.length === 0 ? (
-            <span className="t12">CLICK A FILTER</span>
+            <span className="t12">CLICK AN ELEMENT</span>
           ) : (
             <button
               type="button"
               className="editorial-link bench-reset-btn"
               onClick={onClearFilters}
             >
-              RESET FILTERS ( {activeList.length} )
+              RESET ( {activeList.length} )
             </button>
           )}
         </div>
@@ -94,8 +94,8 @@ export function FilterBenchBand({
         <div className="bench-horizon-col bench-horizon-col--right">
           <span className="t12 num">
             {activeList.length === 0
-              ? 'BEND THE BEAM'
-              : `${liveTelemetry.spectrum} · T${liveTelemetry.tStop}`}
+              ? 'COMPOSE THE SPECTRUM'
+              : `${liveTelemetry.spectrum} · T${liveTelemetry.tStop} · ${liveTelemetry.transPct}%`}
           </span>
         </div>
 
@@ -105,13 +105,13 @@ export function FilterBenchBand({
             className="editorial-link bench-reserve-btn"
             onClick={(e) => onOpenDrawer(e.currentTarget)}
           >
-            RESERVE FROM $780
+            RESERVE FROM $590
           </button>
         </div>
       </div>
 
-      {/* 3 Direct-Manipulation Tabletop Filter Hit-Zones synced over the 3D resting filters */}
-      <div className="bench-hotspots-layer" role="group" aria-label="Optical Glass Filters">
+      {/* 3 Direct-Manipulation Tabletop Optical Wand Hit-Zones synced over the 3D resting wands */}
+      <div className="bench-hotspots-layer" role="group" aria-label="Optical Prism Elements">
         {TABLETOP_FILTERS.map((filter) => {
           const isMounted = Boolean(mountedFilters[filter.id]);
           return (
@@ -136,27 +136,16 @@ export function FilterBenchBand({
                   aria-hidden="true"
                 />
                 {filter.shortLabel}
-                {isMounted ? ' · MOUNTED' : ''}
+                {isMounted ? ' · IN BORE' : ''}
               </span>
             </button>
           );
         })}
       </div>
 
-      {/* Quiet WCAG-verified optical bench telemetry bar along bottom studio table margin */}
-      <div className="bench-telemetry-bar" role="status" aria-live="polite">
-        <div className="bench-telemetry-item">
-          <span className="t12 bench-telemetry-key">T-STOP</span>
-          <span className="t12 num bench-telemetry-val">T{liveTelemetry.tStop}</span>
-        </div>
-        <div className="bench-telemetry-item">
-          <span className="t12 bench-telemetry-key">TRANSMISSION</span>
-          <span className="t12 num bench-telemetry-val">{liveTelemetry.transPct}%</span>
-        </div>
-        <div className="bench-telemetry-item">
-          <span className="t12 bench-telemetry-key">SPECTRUM</span>
-          <span className="t12 num bench-telemetry-val">{liveTelemetry.spectrum}</span>
-        </div>
+      {/* Screen-reader live optical telemetry announcement */}
+      <div className="sr-only" role="status" aria-live="polite">
+        Active spectrum {liveTelemetry.spectrum}, T-stop T{liveTelemetry.tStop}, transmission {liveTelemetry.transPct} percent.
       </div>
     </section>
   );

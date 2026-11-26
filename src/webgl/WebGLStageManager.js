@@ -239,6 +239,7 @@ export class WebGLStageManager {
 
     for (const slot of this.slots.values()) {
       if (!slot.inView) continue;
+      if (slot.id === 'hero' && window.scrollY >= h + 8) continue;
       const rect = slot.element.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2 || rect.bottom <= 0 || rect.top >= h) {
         continue;
@@ -249,6 +250,7 @@ export class WebGLStageManager {
       const bottomY = h - rect.bottom;
       this.renderer.setViewport(rect.left, bottomY, rect.width, rect.height);
       this.renderer.setScissor(rect.left, bottomY, rect.width, rect.height);
+      this.renderer.clearDepth();
       this.renderer.render(slot.scene, slot.camera);
     }
 

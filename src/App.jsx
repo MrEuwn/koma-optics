@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
 import { WebGLStageManager } from './webgl/WebGLStageManager.js';
-import { Header } from './components/Header.jsx';
+import { Header, KomaMarkSvg } from './components/Header.jsx';
 import { HeroBand } from './components/HeroBand.jsx';
 import { StoryBand } from './components/StoryBand.jsx';
 import { CollectionBand } from './components/CollectionBand.jsx';
@@ -13,6 +13,7 @@ export default function App() {
   const canvasRef = useRef(null);
   const headerTriggerRef = useRef(null);
   const lastTriggerRef = useRef(null);
+  const heroProgressRef = useRef(0);
 
   const [stageManager, setStageManager] = useState(null);
   const [webglFallback, setWebglFallback] = useState(false);
@@ -20,6 +21,12 @@ export default function App() {
   const [headerHiddenInFooter, setHeaderHiddenInFooter] = useState(false);
   const [heroScrollProgress, setHeroScrollProgress] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [curtainPhase, setCurtainPhase] = useState(() => {
+    if (typeof window === 'undefined') return 'done';
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'done'
+      : 'hold';
+  });
 
   // Start clean at 0 items matching Otto's CART ( 0 ) restraint; adding opens drawer
   const [cartItems, setCartItems] = useState({});
@@ -28,6 +35,17 @@ export default function App() {
     anamorphic: false,
     mist: false,
   });
+
+  // Fast architectural darkroom curtain reveal (~1.05s total; non-blocking & skipped on reduced motion)
+  useEffect(() => {
+    if (curtainPhase === 'done') return undefined;
+    const tLift = window.setTimeout(() => setCurtainPhase('lift'), 380);
+    const tDone = window.setTimeout(() => setCurtainPhase('done'), 1080);
+    return () => {
+      window.clearTimeout(tLift);
+      window.clearTimeout(tDone);
+    };
+  }, []);
 
   // Single-context WebGL2 Scissor Stage Manager (ZERO context exhaustion)
   useEffect(() => {
@@ -56,9 +74,10 @@ export default function App() {
     if (reduced) return undefined;
 
     const lenis = new Lenis({
-      duration: 1.15,
+      duration: 1.5,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
+      wheelMultiplier: 0.9,
     });
 
     let rafId = 0;
@@ -81,6 +100,7 @@ export default function App() {
       rafId = 0;
       const vh = window.innerHeight || 900;
       setHeroScrollProgress(Math.min(1, Math.max(0, window.scrollY / vh)));
+      heroProgressRef.current = Math.min(1, Math.max(0, window.scrollY / vh));
 
       const footerEl = document.querySelector('#footer');
       if (footerEl) {
@@ -180,6 +200,18 @@ export default function App() {
 
   return (
     <>
+      {curtainPhase !== 'done' && (
+        <div
+          className={`koma-curtain ${curtainPhase === 'lift' ? 'koma-curtain--lift' : ''}`}
+          aria-hidden="true"
+        >
+          <div className="koma-curtain__center">
+            <KomaMarkSvg className="koma-curtain__mark" />
+            <span className="t12 num koma-curtain__code">01 / PRISM O (III)</span>
+          </div>
+        </div>
+      )}
+
       <canvas
         id="koma-webgl-stage"
         ref={canvasRef}
@@ -197,7 +229,11 @@ export default function App() {
       />
 
       <main>
-        <HeroBand stageManager={stageManager} webglFallback={webglFallback} />
+        <HeroBand
+          stageManager={stageManager}
+          webglFallback={webglFallback}
+          scrollProgressRef={heroProgressRef}
+        />
 
         <StoryBand
           onOpenDrawer={openDrawer}

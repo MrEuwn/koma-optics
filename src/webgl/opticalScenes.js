@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  buildOpticalFilterCell,
+  buildOpticalWandElement,
   buildPrismMonolith,
   createBrushedTitaniumTextures,
 } from './studioPbrFactory.js';
@@ -18,14 +18,6 @@ function disposeTree(root) {
   });
 }
 
-/**
- * Custom GLSL photographic studio cyclorama floor shader (vec2 p = world XZ where p.x = X, p.y = Z):
- * - Dramatic diagonal photographic spotlight pool across the darkroom studio floor (Hero)
- * - Luminous pale matte studio tabletop melting cleanly into #0D1014 darkroom wall (Filter Bench)
- * - Soft ambient occlusion contact shadows beneath barrels & resting filters
- * - Live dynamic refractive spectral caustics (Amber Dichroic, Anamorphic Streak, Frosted Mist)
- * - Subtle monochrome analog film grain for zero gradient banding
- */
 function createStudioTableShader({ isHero = false }) {
   return new THREE.ShaderMaterial({
     transparent: true,
@@ -37,7 +29,7 @@ function createStudioTableShader({ isHero = false }) {
       uAmber: { value: 0.0 },
       uStreak: { value: 0.0 },
       uMist: { value: 0.0 },
-      uFilterOnTable: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+      uWandOnTable: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
     },
     vertexShader: `
       varying vec2 vWorldXZ;
@@ -54,7 +46,7 @@ function createStudioTableShader({ isHero = false }) {
       uniform float uAmber;
       uniform float uStreak;
       uniform float uMist;
-      uniform vec3 uFilterOnTable;
+      uniform vec3 uWandOnTable;
       varying vec2 vWorldXZ;
 
       float hash21(vec2 p) {
@@ -64,82 +56,71 @@ function createStudioTableShader({ isHero = false }) {
       }
 
       void main() {
-        // p.x = world X, p.y = world Z (positive toward viewer foreground)
         vec2 p = vWorldXZ;
 
-        // Hero diagonal spotlight pooling brightly across bottom-left & softly across bottom-right (matching Otto Hero)
-        float heroHorizon = smoothstep(-2.4, 2.2, p.y - p.x * 0.28 + uPointer.x * 0.35);
-        float heroLeftPool = exp(-dot((p - vec2(-2.0, 1.2)) * vec2(0.24, 0.26), (p - vec2(-2.0, 1.2)) * vec2(0.24, 0.26))) * 1.15;
-        float heroRightPool = exp(-dot((p - vec2(2.3, 1.3)) * vec2(0.28, 0.30), (p - vec2(2.3, 1.3)) * vec2(0.28, 0.30))) * 0.65;
-        float spotHero = clamp(heroHorizon * (0.48 + heroLeftPool + heroRightPool), 0.0, 1.0);
+        // Hero diagonal spotlight pooling brightly across bottom-left (exact Otto s00 chiaroscuro!)
+        float heroHorizon = smoothstep(-1.8, 2.4, p.y - p.x * 0.34 + uPointer.x * 0.28);
+        float heroLeftPool = exp(-dot((p - vec2(-2.4, 1.35)) * vec2(0.24, 0.26), (p - vec2(-2.4, 1.35)) * vec2(0.24, 0.26))) * 1.25;
+        float spotHero = clamp(heroHorizon * (0.42 + heroLeftPool), 0.0, 1.0);
 
-        // Bench luminous diagonal studio tabletop melting smoothly into pitch dark wall behind barrels
-        float benchHorizon = smoothstep(-0.95, 1.25, p.y - p.x * 0.16);
-        float benchFalloff = clamp(1.06 - length((p - vec2(-0.85, 1.65)) * vec2(0.11, 0.12)), 0.42, 1.04);
+        // Tabletop Studio diagonal bright white/warm-paper spotlight sweep (exact Otto s19!)
+        float benchHorizon = smoothstep(-0.85, 1.15, p.y - p.x * 0.22);
+        float benchFalloff = clamp(1.10 - length((p - vec2(-0.95, 1.75)) * vec2(0.10, 0.11)), 0.46, 1.04);
         float spotBench = clamp(benchHorizon * benchFalloff, 0.0, 1.0);
 
         float lit = mix(spotBench, spotHero, uIsHero);
-        lit = clamp(lit + uMist * 0.16 * smoothstep(-1.4, 1.4, p.y), 0.0, 1.0);
+        lit = clamp(lit + uMist * 0.14 * smoothstep(-1.2, 1.4, p.y), 0.0, 1.0);
 
         vec3 darkSlate = vec3(0.051, 0.063, 0.078); // #0D1014
-        vec3 studioLight = mix(vec3(0.86, 0.872, 0.858), vec3(0.76, 0.79, 0.815), uIsHero);
+        vec3 studioLight = mix(vec3(0.90, 0.895, 0.875), vec3(0.77, 0.80, 0.82), uIsHero);
         vec3 col = mix(darkSlate, studioLight, smoothstep(0.01, 0.94, lit));
 
-        // Realistic soft ambient occlusion contact shadows under the 3 PRISM O titanium barrels
+        // Soft ambient occlusion contact shadows under the 4 PRISM O barrels
         float shadow = 0.0;
-        float bxStep = mix(0.80, 1.06, uIsHero);
-        float baseRad = mix(0.46, 0.58, uIsHero);
-        for (int i = -1; i <= 1; i++) {
-          float bx = float(i) * bxStep;
+        float pitch = mix(0.84, 1.12, uIsHero);
+        float baseRad = mix(0.42, 0.56, uIsHero);
+        for (int i = 0; i < 4; i++) {
+          float bx = (float(i) - 1.5) * pitch;
           vec2 dCore = (p - vec2(bx + 0.08, -0.05)) / vec2(baseRad, baseRad * 0.72);
-          shadow = max(shadow, exp(-dot(dCore, dCore) * 1.85) * 0.62);
-          vec2 dCast = (p - vec2(bx + 0.56, -0.28)) / vec2(baseRad * 1.65, baseRad * 0.85);
-          shadow = max(shadow, exp(-dot(dCast, dCast) * 1.55) * 0.36);
+          shadow = max(shadow, exp(-dot(dCore, dCore) * 1.95) * 0.65);
+          vec2 dCast = (p - vec2(bx + 0.65, -0.22)) / vec2(baseRad * 1.8, baseRad * 0.78);
+          shadow = max(shadow, exp(-dot(dCast, dCast) * 1.65) * 0.38);
         }
 
-        // Contact shadows for resting filters on foreground tabletop (fade cleanly as each filter lifts!)
+        // Elongated contact shadows under the 3 resting optical wands on foreground table (exact Otto s19!)
         if (uIsHero < 0.5) {
-          vec2 f0 = (p - vec2(-2.35, 1.68)) / vec2(0.56, 0.38);
-          vec2 f1 = (p - vec2(0.0, 1.92)) / vec2(0.56, 0.38);
-          vec2 f2 = (p - vec2(2.35, 1.68)) / vec2(0.56, 0.38);
-          shadow = max(shadow, exp(-dot(f0, f0) * 2.15) * 0.42 * uFilterOnTable.x);
-          shadow = max(shadow, exp(-dot(f1, f1) * 2.15) * 0.42 * uFilterOnTable.y);
-          shadow = max(shadow, exp(-dot(f2, f2) * 2.15) * 0.42 * uFilterOnTable.z);
+          vec2 w0 = (p - vec2(-2.25, 1.48)) / vec2(0.95, 0.24);
+          vec2 w1 = (p - vec2(-0.15, 1.95)) / vec2(0.95, 0.26);
+          vec2 w2 = (p - vec2(2.15, 1.62)) / vec2(0.95, 0.24);
+          shadow = max(shadow, exp(-dot(w0, w0) * 2.4) * 0.42 * uWandOnTable.x);
+          shadow = max(shadow, exp(-dot(w1, w1) * 2.4) * 0.42 * uWandOnTable.y);
+          shadow = max(shadow, exp(-dot(w2, w2) * 2.4) * 0.42 * uWandOnTable.z);
         }
 
-        col *= (1.0 - shadow * 0.76);
+        col *= (1.0 - shadow * 0.78);
 
-        // Live optical caustic refractions cast directly across the pale lit tabletop!
+        // Refined museum-grade optical caustics cast across the pale studio tabletop when elements are inserted!
         if (uIsHero < 0.5) {
-          // 1) Amber Dichroic warm golden-amber caustic beam sweeping diagonally across table
           if (uAmber > 0.005) {
-            float rayDist = abs((p.y - 0.1) * 0.62 - (p.x + 0.8) * 0.64);
-            float forwardMask = smoothstep(-0.3, 2.5, p.y) * smoothstep(-1.4, 2.6, p.x + 0.8);
-            float caustic = exp(-rayDist * rayDist * 2.8) * forwardMask * exp(-length(p - vec2(0.45, 1.25)) * 0.35);
-            float rimArc = exp(-pow(length(p - vec2(-0.55, 0.95)) - 1.38, 2.0) * 12.0) * smoothstep(-0.1, 1.6, p.y);
-            col += vec3(0.88, 0.38, 0.08) * (caustic * 0.42 + rimArc * 0.28) * uAmber;
+            float rayDist = abs((p.y - 0.15) * 0.62 - (p.x + 1.1) * 0.64);
+            float forwardMask = smoothstep(-0.2, 2.5, p.y) * smoothstep(-1.6, 2.4, p.x + 1.0);
+            float caustic = exp(-rayDist * rayDist * 3.4) * forwardMask * exp(-length(p - vec2(0.25, 1.25)) * 0.38);
+            col += vec3(0.86, 0.38, 0.09) * caustic * 0.38 * uAmber;
           }
-
-          // 2) Anamorphic Streak cool-sapphire horizontal caustic stripe across table foreground
           if (uStreak > 0.005) {
-            float streakBand = exp(-pow(p.y - 0.82, 2.0) * 14.0) * exp(-abs(p.x) * 0.24);
-            float streakCore = exp(-pow(p.y - 0.82, 2.0) * 72.0) * exp(-abs(p.x) * 0.15);
-            col += vec3(0.30, 0.68, 0.94) * (streakBand * 0.38 + streakCore * 0.44) * uStreak;
+            float streakBand = exp(-pow(p.y - 0.88, 2.0) * 18.0) * exp(-abs(p.x) * 0.24);
+            col += vec3(0.32, 0.68, 0.94) * streakBand * 0.34 * uStreak;
           }
-
-          // 3) Frosted Mist warm pearl soft diffusion bloom on table around lens base
           if (uMist > 0.005) {
-            float mistHalo = exp(-length(p - vec2(0.25, 0.95)) * 0.58);
-            col += vec3(0.95, 0.89, 0.78) * mistHalo * 0.28 * uMist;
+            float mistHalo = exp(-length(p - vec2(0.55, 1.05)) * 0.62);
+            col += vec3(0.95, 0.89, 0.78) * mistHalo * 0.24 * uMist;
           }
         }
 
-        // Authentic monochrome studio film grain
-        float grain = (hash21(gl_FragCoord.xy + fract(uTime * 0.01)) - 0.5) * 0.036;
+        float grain = (hash21(gl_FragCoord.xy + fract(uTime * 0.01)) - 0.5) * 0.038;
         col += grain;
 
-        // Melt far back edge seamlessly into #0D1014 darkroom wall
-        float backFade = smoothstep(-2.8, -0.55, p.y);
+        float backFade = smoothstep(-2.6, -0.45, p.y);
         col = mix(darkSlate, col, backFade);
 
         gl_FragColor = vec4(col, 1.0);
@@ -149,80 +130,41 @@ function createStudioTableShader({ isHero = false }) {
 }
 
 /**
- * Additive translucent optical beam plane used on the Interactive Tabletop Bench
- * to render live spectral flares & horizontal anamorphic streaks emerging from mounted filters.
+ * SLOT 1: HERO DARKROOM CHIAROSCURO STAGE (exact Otto s00angled 4-barrel + 3-crystal-tube cascade!)
  */
-function createRefractionFlareMaterial(colorHex) {
-  return new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    uniforms: {
-      uColor: { value: new THREE.Color(colorHex) },
-      uIntensity: { value: 0.0 },
-      uTime: { value: 0.0 },
-      uSharpness: { value: 12.0 },
-    },
-    vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 uColor;
-      uniform float uIntensity;
-      uniform float uTime;
-      uniform float uSharpness;
-      varying vec2 vUv;
-      void main() {
-        float yDist = abs(vUv.y - 0.5) * 2.0;
-        float xDist = abs(vUv.x - 0.5) * 2.0;
-        float core = exp(-yDist * yDist * uSharpness) * (1.0 - smoothstep(0.08, 1.0, xDist));
-        float halo = exp(-yDist * yDist * 2.6) * (1.0 - smoothstep(0.0, 1.0, xDist)) * 0.34;
-        float shimmer = 0.93 + 0.07 * sin(uTime * 1.4 + vUv.x * 5.0);
-        float alpha = (core + halo) * shimmer * uIntensity;
-        gl_FragColor = vec4(uColor * (1.05 + core * 0.45), clamp(alpha, 0.0, 0.92));
-      }
-    `,
-  });
-}
-
-/**
- * SLOT 1: HERO DARKROOM CHIAROSCURO STAGE
- * Monumental brushed-titanium PRISM O (III) sculpture rising cleanly out of the bottom 52%
- * over a luminous diagonal studio spotlight floor pool, leaving serene dark air behind the header.
- */
-export function createHeroStudioScene(pointerRef) {
+export function createHeroStudioScene(pointerRef, scrollProgressRef) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 80);
 
-  const keyLight = new THREE.DirectionalLight('#F6F8FB', 2.45);
-  keyLight.position.set(-5.2, 6.8, 5.0);
-  const rimLight = new THREE.DirectionalLight('#D2E2F5', 1.55);
-  rimLight.position.set(5.5, 4.0, -3.5);
-  const warmBounce = new THREE.DirectionalLight('#F2DAC2', 0.9);
-  warmBounce.position.set(3.2, -1.5, 4.8);
-  const ambLight = new THREE.AmbientLight('#8C98A8', 0.58);
+  const keyLight = new THREE.DirectionalLight('#F7FAFE', 2.55);
+  keyLight.position.set(-5.6, 6.4, 5.2);
+  const rimLight = new THREE.DirectionalLight('#D2E2F5', 1.45);
+  rimLight.position.set(5.5, 4.2, -3.5);
+  const warmBounce = new THREE.DirectionalLight('#EFE0CE', 0.85);
+  warmBounce.position.set(-2.5, -1.2, 4.8);
+  const ambLight = new THREE.AmbientLight('#8C98A8', 0.52);
   scene.add(keyLight, rimLight, warmBounce, ambLight);
 
   const textures = createBrushedTitaniumTextures();
 
-  // Dramatic diagonal studio spotlight floor positioned cleanly in Hero's lower chiaroscuro horizon
   const floorMat = createStudioTableShader({ isHero: true });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(38, 28), floorMat);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 28), floorMat);
   floor.rotation.x = -Math.PI * 0.5;
-  floor.position.set(0, -0.78, 0);
+  floor.position.set(0, -1.15, 0);
   scene.add(floor);
 
   const rig = new THREE.Group();
-  rig.position.set(0.04, 0.18, 0.0);
-  rig.rotation.set(0.0, -0.18, 0.0);
+  // Bottom of the barrels sits exactly on the floor; rig tilted so the open jet-black mouths step diagonally.
+  rig.position.set(0.18, -1.15 + 1.36, 0.0);
+  rig.rotation.set(0.08, -0.34, -0.04);
   scene.add(rig);
 
-  const prism = buildPrismMonolith({ textures, heightScale: 1.0, barrelRadius: 0.49 });
+  const prism = buildPrismMonolith({
+    textures,
+    heightScale: 0.95,
+    barrelRadius: 0.36,
+    steppedHero: true,
+  });
   rig.add(prism.group);
 
   return {
@@ -232,21 +174,20 @@ export function createHeroStudioScene(pointerRef) {
       const aspect = Math.max(0.35, w / Math.max(1, h));
       camera.aspect = aspect;
       if (aspect < 0.78) {
-        // Mobile 390px framing: all 3 brushed barrels sit gracefully in bottom 56% over glowing spotlight floor!
-        camera.fov = 34;
-        camera.position.set(0.22, 3.25, 9.6);
-        camera.lookAt(0.02, 1.12, 0.0);
+        camera.fov = 35;
+        camera.position.set(-0.2, 4.6, 11.2);
+        camera.lookAt(0.1, 1.6, 0.0);
       } else {
-        // Desktop 1440px framing: gleaming barrels + dramatic diagonal floor spotlight in bottom 54%
-        camera.fov = 26;
-        camera.position.set(0.32, 3.15, 7.95);
-        camera.lookAt(0.02, 1.34, 0.0);
+        camera.fov = 25;
+        camera.position.set(-0.22, 3.72, 7.55);
+        camera.lookAt(-0.08, 1.44, 0.0);
       }
       camera.updateProjectionMatrix();
     },
     onUpdate: (dt, elapsed, reducedMotion) => {
       const px = pointerRef?.current?.x ?? 0;
       const py = pointerRef?.current?.y ?? 0;
+      const sp = scrollProgressRef?.current ?? 0;
 
       floorMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
       floorMat.uniforms.uPointer.value.set(px, py);
@@ -256,137 +197,142 @@ export function createHeroStudioScene(pointerRef) {
         gm.uniforms.uPointer.value.set(px, py);
       }
 
+      // Subtle upward parallax rise as Story paper curtain wipes up over Hero (exact Otto s01!)
+      rig.position.y = -1.15 + 1.36 + sp * 0.5;
+
       if (reducedMotion) {
-        rig.rotation.y = -0.18;
-        keyLight.position.set(-5.2, 6.8, 5.0);
+        rig.rotation.y = -0.34;
         return;
       }
 
-      const targetRotY = -0.18 + px * 0.11 + Math.sin(elapsed * 0.35) * 0.02;
-      const targetRotX = py * 0.03;
-      rig.rotation.y += (targetRotY - rig.rotation.y) * Math.min(1, dt * 3.8);
-      rig.rotation.x += (targetRotX - rig.rotation.x) * Math.min(1, dt * 3.8);
+      const targetRotY = -0.34 + px * 0.12 + sp * 0.14 + Math.sin(elapsed * 0.35) * 0.018;
+      const targetRotX = 0.08 + py * 0.03;
+      rig.rotation.y += (targetRotY - rig.rotation.y) * Math.min(1, dt * 4.0);
+      rig.rotation.x += (targetRotX - rig.rotation.x) * Math.min(1, dt * 4.0);
 
-      const targetLightX = -5.2 + px * 3.4;
+      const targetLightX = -5.6 + px * 3.2;
       keyLight.position.x += (targetLightX - keyLight.position.x) * Math.min(1, dt * 4.5);
     },
     onDispose: () => {
       textures.roughnessMap.dispose();
       textures.bumpMap.dispose();
-      textures.knurlBumpMap.dispose();
       disposeTree(scene);
     },
   };
 }
 
 /**
- * SLOT 2: SIGNATURE INTERACTIVE TABLETOP FILTER STUDIO ("CLICK A FILTER · BEND THE BEAM")
- * Recreates Otto's chiaroscuro tabletop studio atmosphere with ZERO sad-face WebGL boxes:
- * Central gleaming brushed-titanium PRISM O (III) standing on a luminous pale spotlighted tabletop,
- * flanked by 3 resting titanium optical filters that lift cleanly into the optical bay on click!
+ * SLOT 2: PURE MUSEUM CHIAROSCURO TABLETOP COMPOSER (exact Otto s19 bouquet-before / bouquet-after!)
+ * - 4-barrel PRISM O (III) standing center on diagonal spotlighted white cyclorama
+ * - Subtle dark ghostly unlit silhouette stems hovering dimly above barrels before insertion
+ * - 3 jewel-tipped optical wands resting naturally on the lit foreground tabletop; clicking lifts & inserts each wand INTO the barrel!
  */
 export function createFilterBenchStudioScene(benchStateRef) {
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 80);
+  const camera = new THREE.PerspectiveCamera(25, 1, 0.1, 80);
 
-  const keyLight = new THREE.DirectionalLight('#F6F8FB', 2.35);
-  keyLight.position.set(-5.6, 6.8, 4.6);
-  const fillLight = new THREE.DirectionalLight('#DCE4EE', 1.4);
+  const keyLight = new THREE.DirectionalLight('#F6F8FB', 2.45);
+  keyLight.position.set(-5.8, 6.8, 4.8);
+  const fillLight = new THREE.DirectionalLight('#DCE4EE', 1.35);
   fillLight.position.set(5.4, 3.4, 3.8);
-  const rimLight = new THREE.DirectionalLight('#D0DCEB', 1.2);
+  const rimLight = new THREE.DirectionalLight('#D0DCEB', 1.15);
   rimLight.position.set(0.5, 4.5, -5.0);
   const amberKey = new THREE.PointLight('#D96B27', 0.0, 9.5);
-  amberKey.position.set(-0.75, 1.15, 1.2);
+  amberKey.position.set(-0.9, 1.15, 1.2);
   const cyanKey = new THREE.PointLight('#6BC4F5', 0.0, 9.5);
-  cyanKey.position.set(0.0, 1.2, 1.35);
+  cyanKey.position.set(-0.2, 1.25, 1.35);
   const mistKey = new THREE.PointLight('#F4E8D4', 0.0, 9.5);
-  mistKey.position.set(0.8, 1.25, 1.2);
-  const ambLight = new THREE.AmbientLight('#8A95A5', 0.65);
+  mistKey.position.set(0.9, 1.2, 1.2);
+  const ambLight = new THREE.AmbientLight('#8A95A5', 0.62);
   scene.add(keyLight, fillLight, rimLight, amberKey, cyanKey, mistKey, ambLight);
 
   const textures = createBrushedTitaniumTextures();
 
-  // Luminous pale studio tabletop melting cleanly into #0D1014 darkroom backdrop
   const tableMat = createStudioTableShader({ isHero: false });
   const table = new THREE.Mesh(new THREE.PlaneGeometry(36, 24), tableMat);
   table.rotation.x = -Math.PI * 0.5;
-  table.position.set(0, -1.12, 0);
+  table.position.set(0, -1.16, 0);
   scene.add(table);
 
-  // Refined centered PRISM O (III) sculpture leaving generous negative space for the 4-col horizon strip
-  const prism = buildPrismMonolith({ textures, heightScale: 0.72, barrelRadius: 0.37 });
-  prism.group.position.set(0, -1.12 + prism.H * 0.5, -0.05);
+  const prism = buildPrismMonolith({
+    textures,
+    heightScale: 0.68,
+    barrelRadius: 0.32,
+    steppedHero: false,
+  });
+  prism.group.position.set(0, -1.16 + prism.H * 0.5, -0.08);
   scene.add(prism.group);
 
-  const barrelTopY = -1.12 + prism.H + 0.06;
+  const barrelTopY = -1.16 + prism.H;
 
-  // 3 physical optical glass filters resting cleanly across the lit foreground studio tabletop
-  const filterConfigs = [
+  // Subtle dark silhouette preview outlines emerging dimly above barrels (exact Otto bouquet-before dark stems!)
+  const ghostMat = new THREE.MeshBasicMaterial({
+    color: '#1A1F26',
+    transparent: true,
+    opacity: 0.55,
+  });
+  const ghostSlots = [0, 1, 3];
+  const ghostGroups = ghostSlots.map((bIdx, i) => {
+    const g = new THREE.Group();
+    g.position.set(prism.barrelXs[bIdx], barrelTopY + 0.35 + (i === 1 ? 0.24 : 0), -0.12);
+    g.rotation.z = i === 0 ? 0.22 : i === 2 ? -0.22 : -0.05;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.95, 8), ghostMat);
+    g.add(stem);
+    for (let k = -1; k <= 1; k++) {
+      const disc = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.12, 18), ghostMat);
+      disc.position.set(k * 0.16, 0.34 + Math.abs(k) * -0.12, 0);
+      g.add(disc);
+    }
+    scene.add(g);
+    return g;
+  });
+
+  // 3 Clickable Optical Prism Wands resting horizontally on the lit foreground tabletop, slotting upright into barrels 0, 1, 3!
+  const wandConfigs = [
     {
       id: 'amber',
-      restPos: new THREE.Vector3(-2.35, -1.06, 1.68),
-      restRot: new THREE.Euler(0.0, 0.24, 0.0),
-      mountPos: new THREE.Vector3(-prism.spacing, barrelTopY + 0.24, -0.04),
-      mountRot: new THREE.Euler(0.58, 0.12, -0.18),
-      glassColor: '#E87A30',
+      variant: 0,
+      restPos: new THREE.Vector3(-2.35, -1.07, 1.48),
+      restRot: new THREE.Euler(Math.PI * 0.48, 0.08, -1.25),
+      mountPos: new THREE.Vector3(prism.barrelXs[0], barrelTopY + 0.26, -0.08),
+      mountRot: new THREE.Euler(0.08, 0.2, 0.24),
+      glassColor: '#F28B30',
       rimAccent: '#D96B27',
-      streakRibs: false,
     },
     {
       id: 'anamorphic',
-      restPos: new THREE.Vector3(0.0, -1.06, 1.92),
-      restRot: new THREE.Euler(0.0, -0.15, 0.0),
-      mountPos: new THREE.Vector3(0.0, barrelTopY + 0.32, -0.04),
-      mountRot: new THREE.Euler(0.68, 0.0, 0.0),
-      glassColor: '#7AC7F2',
+      variant: 1,
+      restPos: new THREE.Vector3(-0.08, -1.07, 1.95),
+      restRot: new THREE.Euler(Math.PI * 0.48, -0.06, -1.85),
+      mountPos: new THREE.Vector3(prism.barrelXs[1], barrelTopY + 0.44, -0.08),
+      mountRot: new THREE.Euler(0.05, -0.15, 0.04),
+      glassColor: '#8ED4FA',
       rimAccent: '#6EC8F5',
-      streakRibs: true,
     },
     {
       id: 'mist',
-      restPos: new THREE.Vector3(2.35, -1.06, 1.68),
-      restRot: new THREE.Euler(0.0, -0.28, 0.0),
-      mountPos: new THREE.Vector3(prism.spacing, barrelTopY + 0.24, -0.04),
-      mountRot: new THREE.Euler(0.58, -0.12, 0.18),
-      glassColor: '#F3ECE0',
-      rimAccent: '#C9BFB0',
-      streakRibs: false,
+      variant: 2,
+      restPos: new THREE.Vector3(2.22, -1.07, 1.62),
+      restRot: new THREE.Euler(Math.PI * 0.48, 0.12, 1.18),
+      mountPos: new THREE.Vector3(prism.barrelXs[3], barrelTopY + 0.28, -0.08),
+      mountRot: new THREE.Euler(0.08, -0.22, -0.24),
+      glassColor: '#F7EFE2',
+      rimAccent: '#DFD4C3',
     },
   ];
 
-  const filterMeshes = filterConfigs.map((cfg) => {
-    const cell = buildOpticalFilterCell({
+  const wandMeshes = wandConfigs.map((cfg) => {
+    const wand = buildOpticalWandElement({
       textures,
       glassColor: cfg.glassColor,
       rimAccent: cfg.rimAccent,
-      streakRibs: cfg.streakRibs,
+      variant: cfg.variant,
     });
-    cell.group.scale.setScalar(0.88);
-    cell.group.position.copy(cfg.restPos);
-    cell.group.rotation.copy(cfg.restRot);
-    scene.add(cell.group);
-    return { ...cfg, ...cell, progress: 0 };
+    wand.group.position.copy(cfg.restPos);
+    wand.group.rotation.copy(cfg.restRot);
+    scene.add(wand.group);
+    return { ...cfg, ...wand, progress: 0, restX: cfg.restPos.x };
   });
-
-  // Live additive volumetric optical refraction flares emerging from mounted filters
-  const amberFlareMat = createRefractionFlareMaterial('#E8742A');
-  amberFlareMat.uniforms.uSharpness.value = 6.5;
-  const amberFlare = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.4), amberFlareMat);
-  amberFlare.position.set(0.75, barrelTopY + 0.28, 0.24);
-  amberFlare.rotation.z = -0.32;
-  scene.add(amberFlare);
-
-  const streakFlareMat = createRefractionFlareMaterial('#72C8FA');
-  streakFlareMat.uniforms.uSharpness.value = 28.0;
-  const streakFlare = new THREE.Mesh(new THREE.PlaneGeometry(11.0, 0.78), streakFlareMat);
-  streakFlare.position.set(0.0, barrelTopY + 0.32, 0.36);
-  scene.add(streakFlare);
-
-  const mistFlareMat = createRefractionFlareMaterial('#F5E8D0');
-  mistFlareMat.uniforms.uSharpness.value = 2.6;
-  const mistFlare = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 2.1), mistFlareMat);
-  mistFlare.position.set(prism.spacing * 0.7, barrelTopY + 0.26, 0.28);
-  scene.add(mistFlare);
 
   return {
     scene,
@@ -394,74 +340,78 @@ export function createFilterBenchStudioScene(benchStateRef) {
     onResize: (w, h) => {
       const aspect = Math.max(0.35, w / Math.max(1, h));
       camera.aspect = aspect;
+      const xScale = aspect < 0.85 ? 0.5 : 1;
+      wandMeshes.forEach((wm) => {
+        wm.restPos.x = wm.restX * xScale;
+      });
       if (aspect < 0.85) {
         camera.fov = 38;
-        camera.position.set(0.0, 2.55, 11.4);
-        camera.lookAt(0.0, -0.05, 0.45);
+        camera.position.set(0.0, 2.45, 11.2);
+        camera.lookAt(0.0, -0.08, 0.45);
       } else {
         camera.fov = 25;
-        camera.position.set(0.0, 2.38, 10.45);
-        camera.lookAt(0.0, -0.02, 0.48);
+        camera.position.set(0.0, 2.28, 10.25);
+        camera.lookAt(0.0, -0.06, 0.48);
       }
       camera.updateProjectionMatrix();
     },
     onUpdate: (dt, elapsed, reducedMotion) => {
       const mounted = benchStateRef?.current?.mounted || {};
       const hoveredId = benchStateRef?.current?.hoveredId || null;
-      const lerpSpeed = reducedMotion ? 1.0 : Math.min(1, dt * 6.4);
+      const lerpSpeed = reducedMotion ? 1.0 : Math.min(1, dt * 5.6);
 
-      filterMeshes.forEach((fm, idx) => {
-        const isMounted = Boolean(mounted[fm.id]);
+      wandMeshes.forEach((wm, idx) => {
+        const isMounted = Boolean(mounted[wm.id]);
         const targetP = isMounted ? 1.0 : 0.0;
-        fm.progress += (targetP - fm.progress) * lerpSpeed;
+        wm.progress += (targetP - wm.progress) * lerpSpeed;
 
-        const p = fm.progress;
+        const p = wm.progress;
         const smoothP = p * p * (3 - 2 * p);
-        const arcLift = Math.sin(smoothP * Math.PI) * 1.1;
-        const hoverLift = !isMounted && hoveredId === fm.id ? 0.08 : 0.0;
+        // High graceful parabolic lift over the rim before descending into the open optical bore!
+        const arcLift = Math.sin(smoothP * Math.PI) * 1.35;
+        const hoverLift = !isMounted && hoveredId === wm.id ? 0.07 : 0.0;
 
-        fm.group.position.lerpVectors(fm.restPos, fm.mountPos, smoothP);
-        fm.group.position.y += arcLift + hoverLift;
+        wm.group.position.lerpVectors(wm.restPos, wm.mountPos, smoothP);
+        wm.group.position.y += arcLift + hoverLift;
 
-        const floatY = isMounted && !reducedMotion ? Math.sin(elapsed * 1.6 + idx * 1.2) * 0.02 : 0;
-        fm.group.position.y += floatY;
+        if (isMounted && !reducedMotion) {
+          wm.group.rotation.z =
+            wm.mountRot.z + Math.sin(elapsed * 1.3 + idx * 1.4) * 0.022;
+        } else {
+          wm.group.rotation.z = THREE.MathUtils.lerp(wm.restRot.z, wm.mountRot.z, smoothP);
+        }
 
-        fm.group.rotation.x = THREE.MathUtils.lerp(fm.restRot.x, fm.mountRot.x, smoothP);
-        fm.group.rotation.y = THREE.MathUtils.lerp(fm.restRot.y, fm.mountRot.y, smoothP);
-        fm.group.rotation.z = THREE.MathUtils.lerp(fm.restRot.z, fm.mountRot.z, smoothP);
+        wm.group.rotation.x = THREE.MathUtils.lerp(wm.restRot.x, wm.mountRot.x, smoothP);
+        wm.group.rotation.y = THREE.MathUtils.lerp(wm.restRot.y, wm.mountRot.y, smoothP);
+
+        if (ghostGroups[idx]) {
+          ghostGroups[idx].visible = p < 0.65;
+        }
       });
 
-      const pAmber = filterMeshes[0].progress;
-      const pStreak = filterMeshes[1].progress;
-      const pMist = filterMeshes[2].progress;
+      const pAmber = wandMeshes[0].progress;
+      const pStreak = wandMeshes[1].progress;
+      const pMist = wandMeshes[2].progress;
 
       tableMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
       tableMat.uniforms.uAmber.value = pAmber;
       tableMat.uniforms.uStreak.value = pStreak;
       tableMat.uniforms.uMist.value = pMist;
-      tableMat.uniforms.uFilterOnTable.value.set(1.0 - pAmber, 1.0 - pStreak, 1.0 - pMist);
+      tableMat.uniforms.uWandOnTable.value.set(1.0 - pAmber, 1.0 - pStreak, 1.0 - pMist);
 
-      amberKey.intensity = pAmber * 7.2;
-      cyanKey.intensity = pStreak * 6.6;
-      mistKey.intensity = pMist * 5.0;
+      amberKey.intensity = pAmber * 5.8;
+      cyanKey.intensity = pStreak * 5.4;
+      mistKey.intensity = pMist * 4.2;
 
-      amberFlareMat.uniforms.uIntensity.value = pAmber * 0.68;
-      amberFlareMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
-      streakFlareMat.uniforms.uIntensity.value = pStreak * 0.9;
-      streakFlareMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
-      mistFlareMat.uniforms.uIntensity.value = pMist * 0.46;
-      mistFlareMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
-
-      prism.glassMaterials[0].uniforms.uAccentMix.value = 0.16 + pAmber * 0.78;
-      prism.glassMaterials[1].uniforms.uAccentMix.value = 0.18 + pStreak * 0.52;
+      prism.glassMaterials[0].uniforms.uAccentMix.value = 0.14 + pAmber * 0.72;
+      prism.glassMaterials[1].uniforms.uAccentMix.value = 0.14 + pStreak * 0.68;
       prism.glassMaterials[1].uniforms.uAccent.value.set(pStreak > 0.2 ? '#72C8FA' : '#D96B27');
-      prism.glassMaterials[2].uniforms.uAccentMix.value = 0.16 + pMist * 0.65;
-      prism.glassMaterials[2].uniforms.uAccent.value.set(pMist > 0.2 ? '#F5E8D0' : '#A6BCD4');
+      prism.glassMaterials[3].uniforms.uAccentMix.value = 0.14 + pMist * 0.65;
+      prism.glassMaterials[3].uniforms.uAccent.value.set(pMist > 0.2 ? '#F5E8D0' : '#A6BCD4');
     },
     onDispose: () => {
       textures.roughnessMap.dispose();
       textures.bumpMap.dispose();
-      textures.knurlBumpMap.dispose();
       disposeTree(scene);
     },
   };

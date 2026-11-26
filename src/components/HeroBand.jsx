@@ -1,15 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { createHeroStudioScene } from '../webgl/opticalScenes.js';
 
-export function HeroBand({ stageManager, webglFallback }) {
+export function HeroBand({ stageManager, webglFallback, scrollProgressRef }) {
   const slotRef = useRef(null);
   const pointerRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!stageManager || !slotRef.current) return undefined;
-    const descriptor = createHeroStudioScene(pointerRef);
+    const descriptor = createHeroStudioScene(pointerRef, scrollProgressRef);
     return stageManager.registerSlot('hero', slotRef.current, descriptor);
-  }, [stageManager]);
+  }, [stageManager, scrollProgressRef]);
 
   const handlePointerMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();

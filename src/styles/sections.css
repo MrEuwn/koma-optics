@@ -1,6 +1,43 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    KOMA O-III (PRISM O) : Museum Editorial & Chiaroscuro Layout Styles
    ========================================================================== */
+
+/* 0. SURGICAL ARCHITECTURAL CURTAIN PRELOADER
+   -------------------------------------------------------------------------- */
+.koma-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background-color: #090B0E;
+  color: #EFF2F5;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.68s var(--ease-editorial);
+}
+
+.koma-curtain--lift {
+  transform: translate3d(0, -100%, 0);
+}
+
+.koma-curtain__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  --header-mark-cutout: #090B0E;
+}
+
+.koma-curtain__mark {
+  width: 28px;
+  height: 28px;
+}
+
+.koma-curtain__code {
+  color: #9BA3AC;
+  letter-spacing: 0.12em;
+}
 
 /* 1. OBYS ARCHITECTURAL FIXED 4-ZONE HEADER
    -------------------------------------------------------------------------- */
@@ -128,6 +165,7 @@
 
 .site-header--scrolled .tree-series--active {
   color: var(--header-muted);
+  opacity: 0.48;
 }
 
 .tree-series__head {
@@ -293,349 +331,15 @@
   object-position: center bottom;
 }
 
-/* 3. STORY BAND (#EEF0EC LAB PAPER : 4 PINNED OBYS CHOREOGRAPHED ACTS)
-   -------------------------------------------------------------------------- */
-.story-band {
-  z-index: 4;
-  background-color: #EEF0EC;
-  color: #181C20;
-  padding-top: 0;
-  padding-bottom: clamp(72px, 6vw, 112px);
-}
-
-/* Act 1: 235vh Pinned Monumental Split Headline + Rising Orthographic Filmstrip */
-.story-act-hero-track {
-  position: relative;
-  height: 235vh;
-  min-height: 1750px;
-}
-
-.story-act-hero-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
-  overflow: hidden;
-  padding: 0 var(--gutter-x);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.story-split-headline {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  width: 100%;
-  max-width: 1280px;
-  will-change: transform, opacity;
-}
-
-.story-headline-line {
-  display: block;
-  color: #181C20;
-}
-
-/* Piercing vertical column of 4 square studio plates gliding straight up through headline split */
-.story-ortho-column {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin-left: calc(clamp(144px, 12.6vw, 184px) * -0.5);
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  width: clamp(144px, 12.6vw, 184px);
-  will-change: transform;
-  pointer-events: none;
-}
-
-.story-ortho-plate {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background-color: #E4E6E2;
-  overflow: hidden;
-}
-
-.story-ortho-plate img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 4-column razor-sharp architectural dimension rail pinned cleanly below headline */
-.story-dim-rail {
-  position: absolute;
-  left: var(--gutter-x);
-  right: var(--gutter-x);
-  bottom: clamp(44px, 7.5vh, 84px);
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 18% 24% 1fr 22% 16%;
-  align-items: center;
-  color: #4E565F; /* 6.6:1 contrast on #EEF0EC */
-  pointer-events: none;
-  will-change: opacity;
-}
-
-.story-dim-rail > :nth-child(1) {
-  grid-column: 1;
-  text-align: left;
-}
-
-.story-dim-rail > :nth-child(2) {
-  grid-column: 2;
-  text-align: left;
-}
-
-.story-dim-rail > :nth-child(3) {
-  grid-column: 4;
-  text-align: right;
-}
-
-.story-dim-rail > :nth-child(4) {
-  grid-column: 5;
-  text-align: right;
-}
-
-/* Centered editorial thesis emerging cleanly at end of Act 1 */
-.story-thesis-block {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 3;
-  width: min(560px, calc(100vw - 48px));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 24px;
-  opacity: 0;
-  will-change: transform, opacity;
-}
-
-.story-thesis-copy {
-  color: #181C20;
-}
-
-.story-reserve-link {
-  color: #181C20;
-}
-
-/* Act 2: 240vh Pinned Top-Down Photo -> 1px Optical CAD Blueprint Morph & 90deg Spin */
-.story-act-cad-track {
-  position: relative;
-  height: 240vh;
-  min-height: 1800px;
-}
-
-.story-cad-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 var(--gutter-x);
-}
-
-.story-cad-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-}
-
-.story-cad-morph-stack {
-  position: relative;
-  width: clamp(240px, 26vw, 350px);
-  height: clamp(360px, 39vw, 520px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.story-cad-photo-morph {
-  position: absolute;
-  width: clamp(210px, 22vw, 300px);
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 2px;
-  will-change: transform, opacity;
-}
-
-.story-cad-blueprint-layer {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  will-change: transform, opacity;
-}
-
-.story-cad-svg {
-  width: 100%;
-  height: auto;
-}
-
-.story-cad-meta {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  color: #4E565F;
-  will-change: opacity;
-}
-
-/* Act 3: 330vh Pinned 3D Orbital Diagonal Helix Gallery across wide-open #EEF0EC paper */
-.story-act-spiral {
-  position: relative;
-  height: 330vh;
-  min-height: 2400px;
-}
-
-.spiral-sticky-viewport {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  perspective: 1400px;
-}
-
-.spiral-orbit-stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.spiral-frame {
-  position: absolute;
-  width: clamp(190px, 18.5vw, 272px);
-  aspect-ratio: 4 / 3;
-  background-color: #E2E5E0;
-  overflow: hidden;
-  will-change: transform, opacity;
-  box-shadow: 0 24px 56px rgba(24, 28, 32, 0.1);
-}
-
-.spiral-frame img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Act 4: 185vh Pinned Isometric Architectural Optical Bench Size Comparison */
-.story-act-sizes-track {
-  position: relative;
-  height: 185vh;
-  min-height: 1320px;
-}
-
-.story-act-sizes-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
-  padding: clamp(56px, 5vw, 88px) var(--gutter-x) clamp(24px, 3vw, 40px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.sizes-canvas-wrap {
-  width: 100%;
-  max-width: 1180px;
-  will-change: transform;
-}
-
-.sizes-isometric-svg {
-  width: 100%;
-  height: auto;
-}
-
-.sizes-controls-bar {
-  width: 100%;
-  max-width: 1120px;
-  margin-top: 28px;
-  padding-top: 22px;
-  border-top: 1px solid #C7CCC4;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 28px;
-}
-
-.sizes-switcher {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sizes-tab {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid #C7CCC4;
-  color: #4E565F;
-  transition: border-color 0.2s var(--ease-optical), color 0.2s var(--ease-optical), background-color 0.2s var(--ease-optical);
-}
-
-.sizes-tab:hover {
-  border-color: #181C20;
-  color: #181C20;
-}
-
-.sizes-tab--active {
-  border-color: #181C20;
-  background-color: #181C20;
-  color: #EEF0EC;
-}
-
-.sizes-live-readout {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sizes-live-dims {
-  color: #9E430E;
-}
-
-.sizes-live-note {
-  color: #4E565F;
-  font-size: 14px;
-}
-
-.sizes-live-cta {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.sizes-live-price {
-  color: #4E565F;
-}
-
-/* 4. COLLECTION BAND (#0D1014 DARKROOM SLATE : STAGGERED ASYMMETRIC GRID)
+/* 4. COLLECTION BAND (#0D1014 DARKROOM SLATE : WIPES UP OVER PINNED ISOMETRIC ROOM)
    -------------------------------------------------------------------------- */
 .collection-band {
-  z-index: 4;
+  position: relative;
+  z-index: 6;
+  margin-top: -100vh;
   background-color: #0D1014;
   color: #EFF2F5;
-  padding: clamp(118px, 10vw, 158px) var(--gutter-x) clamp(96px, 8.5vw, 148px);
+  padding: clamp(24px, 2.4vw, 36px) var(--gutter-x) clamp(104px, 9vw, 156px);
 }
 
 .collection-split-header {
@@ -643,7 +347,7 @@
   align-items: baseline;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: clamp(72px, 8.5vw, 138px);
+  margin-bottom: clamp(78px, 9vw, 144px);
 }
 
 .collection-broken-grid {
@@ -667,6 +371,7 @@
 }
 
 .col-card__media {
+  position: relative;
   width: 100%;
   background-color: #161B21;
   overflow: hidden;
@@ -688,11 +393,12 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.65s var(--ease-expo-out);
+  transition: transform 0.75s var(--ease-expo-out), filter 0.55s var(--ease-optical);
 }
 
 .col-card__trigger:hover .col-card__media img {
-  transform: scale(1.03);
+  transform: scale(1.038);
+  filter: contrast(1.04) brightness(1.03);
 }
 
 .col-card__caption {
@@ -716,7 +422,23 @@
   color: #9BA3AC; /* 7.3:1 WCAG AAA on #0D1014 */
 }
 
-/* 5. SIGNATURE INTERACTIVE TABLETOP STUDIO ("CLICK A FILTER · BEND THE BEAM")
+.col-card__status {
+  margin-top: 6px;
+  color: #EFF2F5;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.28s var(--ease-optical), transform 0.28s var(--ease-optical);
+}
+
+.col-card__trigger:hover .col-card__status,
+.col-card__trigger:focus-visible .col-card__status {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 5. SIGNATURE INTERACTIVE TABLETOP STUDIO ("CLICK AN ELEMENT · COMPOSE THE SPECTRUM")
    -------------------------------------------------------------------------- */
 .bench-band {
   position: relative;
@@ -750,7 +472,7 @@
 /* Exact Otto 4-column horizontal horizon strip */
 .bench-horizon-strip {
   position: absolute;
-  top: 47.5%;
+  top: 48.5%;
   left: 0;
   right: 0;
   transform: translateY(-50%);
@@ -779,7 +501,7 @@
   color: #EFF2F5;
 }
 
-/* Direct-manipulation clickable filter hit-zones aligned neatly over/below foreground 3D filters */
+/* Pure museum direct-manipulation hit-zones over the 3 resting optical wands (zero permanent box clutter) */
 .bench-hotspots-layer {
   position: absolute;
   inset: 0;
@@ -794,103 +516,68 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  width: clamp(160px, 15vw, 224px);
-  height: clamp(128px, 17vh, 162px);
-  padding-bottom: 0;
+  width: clamp(168px, 16vw, 240px);
+  height: clamp(120px, 16vh, 158px);
+  padding-bottom: 4px;
   transform: translate(-50%, -50%);
   color: #181C20;
   transition: transform 0.3s var(--ease-optical);
 }
 
 .bench-hotspot--left {
-  left: 24.5%;
-  top: 81.5%;
+  left: 25.5%;
+  top: 79.5%;
 }
 
 .bench-hotspot--center {
-  left: 50%;
+  left: 49.5%;
   top: 86%;
 }
 
 .bench-hotspot--right {
-  left: 75.5%;
-  top: 81.5%;
+  left: 73.5%;
+  top: 80%;
 }
 
 .bench-hotspot__ring {
   position: absolute;
-  top: 6px;
-  width: 96px;
-  height: 54px;
+  top: 12px;
+  width: 112px;
+  height: 48px;
   border-radius: 999px;
-  border: 1px dashed rgba(24, 28, 32, 0);
-  transition: border-color 0.25s var(--ease-optical), transform 0.25s var(--ease-optical);
+  border: 1px solid rgba(24, 28, 32, 0);
+  transition: border-color 0.28s var(--ease-optical), transform 0.28s var(--ease-optical);
 }
 
 .bench-hotspot:hover .bench-hotspot__ring,
 .bench-hotspot:focus-visible .bench-hotspot__ring {
-  border-color: rgba(24, 28, 32, 0.55);
-  transform: scale(1.06);
+  border-color: rgba(24, 28, 32, 0.38);
+  transform: scale(1.05);
 }
 
 .bench-hotspot__label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  background-color: rgba(13, 16, 20, 0.88);
-  color: #EFF2F5;
-  border: 1px solid rgba(239, 242, 245, 0.22);
+  gap: 7px;
+  padding: 2px 6px;
+  color: #181C20;
   white-space: nowrap;
-  transition: background-color 0.25s var(--ease-optical), border-color 0.25s var(--ease-optical);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s var(--ease-optical), transform 0.25s var(--ease-optical);
 }
 
-.bench-hotspot:hover .bench-hotspot__label {
-  border-color: rgba(239, 242, 245, 0.62);
-}
-
-.bench-hotspot--mounted .bench-hotspot__label {
-  border-color: #EC8440;
-  background-color: rgba(13, 16, 20, 0.94);
+.bench-hotspot:hover .bench-hotspot__label,
+.bench-hotspot:focus-visible .bench-hotspot__label {
+  opacity: 0.88;
+  transform: translateY(0);
 }
 
 .bench-hotspot__dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-/* Quiet bottom-left / bottom-right museum optical telemetry bar (clear of center filter) */
-.bench-telemetry-bar {
-  position: absolute;
-  left: var(--gutter-x);
-  right: var(--gutter-x);
-  bottom: 14px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  pointer-events: none;
-}
-
-.bench-telemetry-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 4px 8px;
-  background-color: rgba(238, 240, 236, 0.86);
-  color: #181C20;
-}
-
-.bench-telemetry-key {
-  color: #4E565F;
-}
-
-.bench-telemetry-val {
-  color: #181C20;
-  font-weight: 500;
 }
 
 /* 6. MONUMENTAL FULL-BLEED FOOTER (#0D1014 : EXACT OTTO PROPORTIONS)
@@ -1224,82 +911,6 @@
     display: none;
   }
 
-  .hero-band {
-    position: relative;
-  }
-
-  .story-band {
-    padding-top: 88px;
-  }
-
-  .story-act-hero-track,
-  .story-act-cad-track,
-  .story-act-sizes-track {
-    height: auto;
-    min-height: 0;
-  }
-
-  .story-act-hero-sticky,
-  .story-cad-sticky,
-  .story-act-sizes-sticky {
-    position: relative;
-    height: auto;
-    overflow: visible;
-    padding-top: 32px;
-    padding-bottom: 48px;
-  }
-
-  .story-ortho-column {
-    position: relative;
-    top: auto;
-    left: auto;
-    margin-left: 0;
-    margin-top: 24px;
-    width: 58%;
-    max-width: 240px;
-    pointer-events: auto;
-  }
-
-  .story-dim-rail {
-    position: relative;
-    left: auto;
-    right: auto;
-    top: auto;
-    transform: none;
-    margin-top: 28px;
-    margin-bottom: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    width: 100%;
-  }
-
-  .story-thesis-block {
-    position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
-    margin-top: 36px;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-  }
-
-  .story-cad-photo-morph {
-    display: none;
-  }
-
-  .story-dim-rail > :nth-child(1),
-  .story-dim-rail > :nth-child(2),
-  .story-dim-rail > :nth-child(3),
-  .story-dim-rail > :nth-child(4) {
-    grid-column: auto;
-    text-align: left;
-  }
-
-  .story-act-spiral {
-    height: 150vh;
-    min-height: 760px;
-  }
-
   .collection-broken-grid {
     grid-template-columns: 1fr;
     row-gap: 42px;
@@ -1338,13 +949,8 @@
 
   .bench-hotspot__label {
     font-size: 10px;
-    padding: 4px 6px;
-  }
-
-  .bench-telemetry-bar {
-    flex-wrap: wrap;
-    bottom: 10px;
-    gap: 8px;
+    padding: 2px 4px;
+    opacity: 0.82;
   }
 
   .site-footer__top {

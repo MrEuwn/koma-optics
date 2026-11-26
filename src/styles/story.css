@@ -1,0 +1,506 @@
+/* ==========================================================================
+   KOMA O-III : ONE CONTINUOUS 13.6x VH STORY STAGE (Otto-style unbroken flow)
+   One 100vh sticky stage; every scene is choreographed by a single scroll
+   progress value so there is never a dead gap between acts.
+   ========================================================================== */
+
+.story-band {
+  z-index: 4;
+  background-color: #EEF0EC;
+  color: #181C20;
+  padding: 0;
+}
+
+.story-master-track {
+  position: relative;
+  height: 1460vh;
+}
+
+.story-master-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: #EEF0EC;
+}
+
+/* 1. Monumental masked 3-line headline */
+.story-split-headline {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--gutter-x);
+  z-index: 1;
+  will-change: transform, opacity;
+}
+
+.story-line-mask {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  padding-block: 0.045em;
+  color: #181C20;
+}
+
+.story-line-inner {
+  display: block;
+  will-change: transform;
+  transform: translate3d(0, 108%, 0);
+}
+
+.story-dim-rail {
+  position: absolute;
+  left: var(--gutter-x);
+  right: var(--gutter-x);
+  top: 74%;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 15.5% 59% 1fr;
+  color: #4E565F;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.story-dim-rail > :nth-child(1) {
+  grid-column: 1;
+}
+
+.story-dim-rail > :nth-child(2) {
+  grid-column: 2;
+}
+
+.story-dim-rail > :nth-child(3) {
+  grid-column: 3;
+  justify-self: start;
+}
+
+.story-dim-rail > :nth-child(4) {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* 2. Rising filmstrip of square studio plates */
+.story-ortho-column {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: clamp(130px, 11vw, 160px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(-50%, 44vh, 0);
+}
+
+.story-ortho-plate {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background-color: #E2E5E0;
+  overflow: hidden;
+}
+
+.story-ortho-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 3. Lead thesis physically split around the 4th top-down cutout */
+.story-split-thesis {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 92px);
+  z-index: 3;
+  width: min(640px, calc(100vw - 32px));
+  text-align: center;
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translate3d(-50%, calc(-50% + 60vh), 0);
+}
+
+.split-thesis-rows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.split-thesis-row {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  white-space: nowrap;
+  color: #23272B;
+}
+
+.split-thesis-gap {
+  display: inline-block;
+  width: 56px;
+  flex: none;
+}
+
+.split-thesis-gap--narrow {
+  display: inline-block;
+  width: 22px;
+  flex: none;
+}
+
+.split-thesis-meta {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: #4E565F;
+}
+
+.split-thesis-cta {
+  color: #181C20;
+}
+
+/* 4. Pinned flight object: top-down cutout, liquid wipe, real-time 3D wireframe */
+.story-flight-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 520px;
+  height: 540px;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(-50%, -50%, 0) scale(0.6);
+}
+
+.story-wireframe-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.story-flight-photo-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flight-photo-svg {
+  width: 180px;
+  height: 540px;
+}
+
+/* 5. Horizon step rail and giant bottom-rising chapter titles */
+.story-forms-rail {
+  position: absolute;
+  left: var(--gutter-x);
+  right: var(--gutter-x);
+  top: 50%;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 15.5% 59% 1fr auto;
+  align-items: baseline;
+  opacity: 0;
+  pointer-events: none;
+  color: #4E565F;
+}
+
+.story-forms-label {
+  color: #9AA0A6;
+  transition: color 0.4s var(--ease-optical);
+}
+
+.story-forms-label.is-active {
+  color: #181C20;
+}
+
+.story-forms-label:nth-child(3) {
+  grid-column: 3;
+}
+
+.story-forms-label:nth-child(4) {
+  grid-column: 4;
+}
+
+.story-big-steps-stage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: clamp(64px, 9.2vw, 128px);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.story-big-step-mask {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-big-step-text {
+  color: #23272B;
+  white-space: nowrap;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* 6. 3D orbital photo vortex and the flying edition card */
+.story-spiral-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  opacity: 0;
+  perspective: 1400px;
+  pointer-events: none;
+}
+
+.spiral-vortex-field {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.spiral-photo-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  background-color: #E2E5E0;
+  overflow: hidden;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.spiral-photo-card--landscape {
+  width: clamp(190px, 17vw, 250px);
+  aspect-ratio: 4 / 3;
+}
+
+.spiral-photo-card--portrait {
+  width: clamp(130px, 12vw, 176px);
+  aspect-ratio: 3 / 4;
+}
+
+.spiral-photo-card--square {
+  width: clamp(150px, 13vw, 190px);
+  aspect-ratio: 1 / 1;
+}
+
+.spiral-photo-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dock-flank-label {
+  position: absolute;
+  top: 50%;
+  z-index: 6;
+  opacity: 0;
+  color: #4E565F;
+}
+
+.dock-flank-label--left {
+  left: var(--gutter-x);
+}
+
+.dock-flank-label--right {
+  right: var(--gutter-x);
+}
+
+.flying-edition-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  width: min(683px, 94vw);
+  height: 432px;
+  background-color: #FFFFFF;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.flying-edition-card__chrome {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 20px 24px;
+}
+
+.flying-edition-card__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(22px, 2.08vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.014em;
+  text-transform: uppercase;
+  color: #23272B;
+}
+
+.flying-edition-card__grid {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+  gap: clamp(8px, 2.7vw, 39px);
+}
+
+.edition-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #23272B;
+}
+
+.edition-tile__box {
+  width: clamp(98px, 9.2vw, 132px);
+  aspect-ratio: 132 / 163;
+  display: grid;
+  place-items: center;
+  background-color: #EEF0EC;
+  border: 1px solid transparent;
+  transition: border-color 0.3s var(--ease-optical), background-color 0.3s var(--ease-optical);
+}
+
+.edition-tile__box svg {
+  width: 100%;
+  height: auto;
+}
+
+.edition-tile.is-selected .edition-tile__box {
+  border-color: #23272B;
+}
+
+.edition-tile:hover .edition-tile__box {
+  border-color: #6F7780;
+}
+
+.flying-edition-card__meta {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: #4E565F;
+}
+
+.flying-edition-card__buy {
+  color: #181C20;
+}
+
+/* 7. Full-bleed isometric studio room (self-drawing) + live 3D editions */
+.story-room-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.story-room-svg,
+.story-editions-canvas,
+.story-room-callouts-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.story-room-callouts-svg {
+  pointer-events: none;
+}
+
+.story-room-svg path {
+  opacity: 0;
+}
+
+/* Mobile: same single-stage flow, scaled for 390px */
+@media (max-width: 767px) {
+  .story-master-track {
+    height: 1140vh;
+  }
+
+  .story-band {
+    padding-top: 0;
+  }
+
+  .story-line-mask.t120,
+  .story-split-headline .t120 {
+    font-size: 8.9vw;
+  }
+
+  .story-big-step-text {
+    font-size: 11vw;
+  }
+
+  .story-dim-rail {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 6px;
+  }
+
+  .story-dim-rail > :nth-child(1),
+  .story-dim-rail > :nth-child(3) {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .story-dim-rail > :nth-child(2),
+  .story-dim-rail > :nth-child(4) {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .story-forms-rail {
+    grid-template-columns: 18% 1fr auto;
+  }
+
+  .story-forms-label:nth-child(2) {
+    display: none;
+  }
+
+  .story-forms-label:nth-child(3) {
+    grid-column: 2;
+  }
+
+  .story-forms-label:nth-child(4) {
+    grid-column: 3;
+  }
+
+  .split-thesis-row.t30,
+  .split-thesis-rows .t30 {
+    font-size: 5.4vw;
+  }
+
+  .split-thesis-gap {
+    width: 32px;
+  }
+
+  .split-thesis-gap--narrow {
+    width: 18px;
+  }
+
+  .flying-edition-card {
+    height: 392px;
+  }
+
+  .flying-edition-card__chrome {
+    padding: 14px 8px 18px;
+  }
+}
